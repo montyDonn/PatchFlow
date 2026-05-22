@@ -1,0 +1,41 @@
+package com.patchflow.entity;
+
+import com.patchflow.config.UUIDStringConverter;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "\"Project\"")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class Project {
+
+    @Id
+    @Convert(converter = UUIDStringConverter.class)
+    @Column(name = "\"projectId\"", columnDefinition = "uuid", updatable = false, nullable = false)
+    private String projectId;
+
+    @Column(name = "\"projectName\"", nullable = false)
+    private String projectName;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "\"isActive\"", nullable = false)
+    private boolean isActive = true;
+
+    @Column(name = "\"createdAt\"", nullable = false, updatable = false)
+    private Instant createdAt = Instant.now();
+
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
+    @Builder.Default
+    private List<AppModule> modules = new ArrayList<>();
+
+    @PrePersist
+    protected void onCreate() {
+        if (this.projectId == null) this.projectId = java.util.UUID.randomUUID().toString();
+    }
+}

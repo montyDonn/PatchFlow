@@ -1,0 +1,19 @@
+src/components/layout/SwitchAccountDropdown.tsx(42,22): error TS2339: Property 'username' does not exist on type 'User'.
+src/components/layout/SwitchAccountDropdown.tsx(76,71): error TS2339: Property 'name' does not exist on type 'User'.
+src/components/layout/SwitchAccountDropdown.tsx(76,92): error TS2339: Property 'username' does not exist on type 'User'.
+src/components/layout/SwitchAccountDropdown.tsx(80,25): error TS2339: Property 'name' does not exist on type 'User'.
+src/components/layout/SwitchAccountDropdown.tsx(80,51): error TS2339: Property 'username' does not exist on type 'User'.
+src/components/layout/SwitchAccountDropdown.tsx(96,45): error TS2339: Property 'username' does not exist on type 'User'.
+src/components/patches/PatchCard.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/patches/PatchCard.tsx(2,10): error TS1484: 'Task' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/patches/PatchColumn.tsx(2,10): error TS1484: 'Task' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/components/patches/PatchDetailsModal.tsx(2,46): error TS6133: 'ChevronRight' is declared but its value is never read.
+src/components/patches/PatchDetailsModal.tsx(3,10): error TS1484: 'Task' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/hooks/useTasks.ts(3,10): error TS1484: 'Task' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/hooks/useTasks.ts(3,16): error TS1484: 'Module' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/hooks/useTasks.ts(3,24): error TS1484: 'TaskUser' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
+src/pages/Dashboard.tsx(3,40): error TS6133: 'Layers' is declared but its value is never read.
+src/pages/Dashboard.tsx(3,48): error TS6133: 'ShieldCheck' is declared but its value is never read.
+src/pages/Dashboard.tsx(3,61): error TS6133: 'Send' is declared but its value is never read.
+src/pages/PatchBoardPage.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/PatchBoardPage.tsx(5,10): error TS1484: 'Task' is a type and must be imported using a type-only import when 'verbatimModuleSyntax' is enabled.
