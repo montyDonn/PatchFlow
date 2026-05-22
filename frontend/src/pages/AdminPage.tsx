@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import {
   getUsers, createUser, updateUser, deleteUser,
-  reactivateUser, resetPassword, updateUserModules, updateUserManagers,
+  reactivateUser, resetPassword, updateUserModules,
 } from '../api/users';
 import type { User } from '../api/users';
 import { getModules, createModule, updateModule, deleteModule } from '../api/modules';

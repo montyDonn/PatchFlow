@@ -8,8 +8,7 @@ import {
   FileText, 
   Filter, 
   RotateCcw, 
-  Search,
-  ChevronRight
+  Search
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -183,15 +182,6 @@ export default function ReportsPage() {
   // Format Status label helper
   const getStatusLabel = (val: string) => {
     return STATUSES.find(s => s.value === val)?.label || val;
-  };
-
-  // Generate workflow summary path (e.g. Draft -> Assigned -> Completed)
-  const getWorkflowSummary = (task: Task) => {
-    if (!task.statusHistory || task.statusHistory.length === 0) return 'No status history';
-    const states = task.statusHistory.map(h => getStatusLabel(h.newStatus));
-    // Remove consecutive duplicates
-    const uniqueStates = states.filter((val, idx, arr) => idx === 0 || val !== arr[idx - 1]);
-    return uniqueStates.join(' → ');
   };
 
   // Generate detailed workflow summary path showing exactly who did what transition

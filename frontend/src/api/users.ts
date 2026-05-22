@@ -25,6 +25,7 @@ export interface UpdateUserPayload {
   name?: string;
   password?: string;
   designation?: string;
+  role?: string;
 }
 
 export const getUsers = async (role?: string, includeModules = false): Promise<User[]> => {

@@ -129,7 +129,8 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     if (task.managers) {
       setSelectedManagerIds(task.managers.map((m: any) => m.id || m.userId));
     } else if (task.manager) {
-      setSelectedManagerIds([task.manager.id || task.manager.userId]);
+      const managerId = task.manager.id || task.manager.userId || '';
+      setSelectedManagerIds([managerId]);
     } else {
       setSelectedManagerIds([]);
     }
@@ -273,7 +274,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
         verifierIds: selectedVerIds,
         status: editStatus,
         dateStarted: editDateStarted || undefined,
-        clientId: editClientId || null,
+        clientId: editClientId ? editClientId : undefined,
         clientRequestId: editClientId ? (parseInt(editClientRequestId) || 0) : 0,
         reason: reason || undefined,
       });
@@ -331,7 +332,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
         title: editTitle.trim(),
         description: editDescription.trim(),
         moduleId: editModuleId,
-        managerId: editManagerId,
+        managerIds: editManagerId ? [editManagerId] : [],
         clientRequestId: parseInt(editClientRequestId) || 0,
       });
       setIsEditingClientFields(false);
