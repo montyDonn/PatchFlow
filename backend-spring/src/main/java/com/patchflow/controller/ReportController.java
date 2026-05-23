@@ -7,6 +7,7 @@ import com.patchflow.service.TaskService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -25,6 +26,7 @@ public class ReportController {
     private final TaskService taskService;
 
     @GetMapping("/history")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getHistory(HttpServletRequest req) {
         User user = Auth.require(req);
         String role = user.getRole();
@@ -78,6 +80,7 @@ public class ReportController {
     }
 
     @GetMapping("/data")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getReportData(
             @RequestParam(required = false) String view,
             @RequestParam(required = false) String startDate,
@@ -117,8 +120,11 @@ public class ReportController {
                     if ("weekly".equals(view))  return t.getCreatedAt().isAfter(Instant.now().minusSeconds(7 * 86400));
                     if ("monthly".equals(view)) return t.getCreatedAt().isAfter(Instant.now().minusSeconds(30 * 86400));
                     if ("custom".equals(view) && startDate != null && endDate != null) {
-                        Instant s = Instant.parse(startDate), e = Instant.parse(endDate);
-                        return !t.getCreatedAt().isBefore(s) && !t.getCreatedAt().isAfter(e);
+                        Instant s = taskService.parseInstant(startDate, null);
+                        Instant e = taskService.parseInstant(endDate, null);
+                        if (s != null && e != null) {
+                            return !t.getCreatedAt().isBefore(s) && !t.getCreatedAt().isAfter(e);
+                        }
                     }
                     return true;
                 })

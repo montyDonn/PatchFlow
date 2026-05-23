@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public interface SessionRepository extends JpaRepository<Session, String> {
 
-    @Query(value = "SELECT * FROM \"Session\" s WHERE s.\"tokenHash\" = :tokenHash LIMIT 1", nativeQuery = true)
+    @Query("SELECT s FROM Session s JOIN FETCH s.user WHERE s.tokenHash = :tokenHash")
     Optional<Session> findByTokenHash(@Param("tokenHash") String tokenHash);
 
     @Modifying

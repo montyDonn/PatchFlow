@@ -1,0 +1,41 @@
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Node
+node_modules/
+dist/
+
+# Java
+target/
+*.class
+
+# IDE
+.idea/
+.vscode/
+
+# Environment
+.env
+.env.*
+
+# Build
+build/
+out/
+
+# Uploads
+uploads/
+
+# Database
+*.db
+
+# Maven Wrapper Logs
+.mvn/wrapper/maven-wrapper.jar
+
+# Coverage
+coverage/
+
+# Temporary
+tmp/
+temp/

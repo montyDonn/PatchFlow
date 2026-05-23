@@ -9,7 +9,7 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 @Entity
-@Table(name = "\"TaskComment\"")
+@Table(name = "TaskComment")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class TaskComment {
 
@@ -17,39 +17,41 @@ public class TaskComment {
     @Column(name = "id", nullable = false)
     private String id;
 
-    @Column(name = "\"taskId\"", nullable = false)
+    @Column(name = "taskId", nullable = false)
     private String taskId;
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"userId\"", columnDefinition = "uuid", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "userId", columnDefinition = "uuid", nullable = false)
     private String userId;
 
     @Column(name = "content", nullable = false, columnDefinition = "text")
     private String content;
 
-    @Column(name = "\"authorName\"")
+    @Column(name = "authorName")
     private String authorName;
 
-    @Column(name = "\"authorRole\"")
+    @Column(name = "authorRole")
     private String authorRole;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "files", columnDefinition = "jsonb")
     private Object files;
 
-    @Column(name = "\"createdAt\"", nullable = false, updatable = false)
+    @Builder.Default
+    @Column(name = "createdAt", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"taskId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "taskId", insertable = false, updatable = false)
     private Task task;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"userId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "userId", insertable = false, updatable = false)
     private User user;
 
     @PrePersist
     protected void onCreate() {
         if (this.id == null) this.id = java.util.UUID.randomUUID().toString();
+        if (this.createdAt == null) this.createdAt = Instant.now();
     }
 }

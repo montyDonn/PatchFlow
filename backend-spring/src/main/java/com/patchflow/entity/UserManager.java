@@ -2,12 +2,14 @@ package com.patchflow.entity;
 
 import com.patchflow.config.UUIDStringConverter;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.*;
 
 import java.time.Instant;
 
 @Entity
-@Table(name = "\"UserManager\"")
+@Table(name = "UserManager")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class UserManager {
 
@@ -15,23 +17,23 @@ public class UserManager {
     @Column(name = "id", nullable = false)
     private String id;
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"userId\"", columnDefinition = "uuid", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "userId", columnDefinition = "uuid", nullable = false)
     private String userId;
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"managerId\"", columnDefinition = "uuid", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "managerId", columnDefinition = "uuid", nullable = false)
     private String managerId;
 
-    @Column(name = "\"assignedAt\"", nullable = false, updatable = false)
+    @Column(name = "assignedAt", nullable = false, updatable = false)
     private Instant assignedAt = Instant.now();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"managerId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "managerId", insertable = false, updatable = false)
     private User manager;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"userId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "userId", insertable = false, updatable = false)
     private User user;
 
     @PrePersist

@@ -74,6 +74,26 @@ public class TaskService {
                 .stream().map(UserManager::getUserId).collect(Collectors.toList());
     }
 
+    public Instant parseInstant(String dateStr, Instant defaultVal) {
+        if (dateStr == null || dateStr.isBlank()) return defaultVal;
+        try {
+            return Instant.parse(dateStr);
+        } catch (java.time.format.DateTimeParseException e) {
+            try {
+                if (dateStr.length() == 10) {
+                    return java.time.LocalDate.parse(dateStr)
+                            .atStartOfDay(java.time.ZoneOffset.UTC)
+                            .toInstant();
+                }
+                return java.time.LocalDateTime.parse(dateStr.replace(" ", "T"))
+                        .atOffset(java.time.ZoneOffset.UTC)
+                        .toInstant();
+            } catch (Exception ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date format: " + dateStr + ". Expected ISO-8601 or YYYY-MM-DD", ex);
+            }
+        }
+    }
+
     // ── Validate transition ──────────────────────────────────────────────────
 
     private void validateStatusTransition(Task task, User actor, String newStatus) {
@@ -200,7 +220,23 @@ public class TaskService {
                 return cm;
             }).collect(Collectors.toList()));
         }
-        if (task.getAttachments() != null) m.put("attachments", task.getAttachments());
+        if (task.getAttachments() != null) {
+            m.put("attachments", task.getAttachments().stream().map(a -> {
+                Map<String, Object> am = new LinkedHashMap<>();
+                am.put("id", a.getId());
+                am.put("taskId", a.getTaskId());
+                am.put("uploaderId", a.getUploaderId());
+                am.put("fileUrl", a.getFileUrl());
+                am.put("fileName", a.getFileName());
+                am.put("fileType", a.getFileType());
+                am.put("size", a.getSize());
+                am.put("createdAt", a.getCreatedAt());
+                am.put("uploader", normalizeUser(a.getUploader()));
+                return am;
+            }).collect(Collectors.toList()));
+        } else {
+            m.put("attachments", List.of());
+        }
         if (task.getStatusHistory() != null) {
             m.put("statusHistory", task.getStatusHistory().stream().map(h -> {
                 Map<String, Object> hm = new LinkedHashMap<>();
@@ -256,9 +292,9 @@ public class TaskService {
                 .managers(new ArrayList<>(managers))
                 .developers(new ArrayList<>(developers))
                 .verifiers(new ArrayList<>(verifiers))
-                .dateGiven(dateGiven != null ? Instant.parse(dateGiven) : Instant.now())
-                .plannedStartDate(plannedStartDate != null ? Instant.parse(plannedStartDate) : null)
-                .plannedEndDate(plannedEndDate != null ? Instant.parse(plannedEndDate) : null)
+                .dateGiven(parseInstant(dateGiven, Instant.now()))
+                .plannedStartDate(parseInstant(plannedStartDate, null))
+                .plannedEndDate(parseInstant(plannedEndDate, null))
                 .status(initialStatus)
                 .lifecycleStatus(lifecycleStatus)
                 .build();
@@ -281,6 +317,7 @@ public class TaskService {
 
     // ── getTasks ─────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> getTasks(String role, String userId, boolean includeDeleted) {
         List<Task> tasks;
         if (isAdmin(role) && includeDeleted) {
@@ -317,6 +354,7 @@ public class TaskService {
 
     // ── getTaskById ──────────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public Map<String, Object> getTaskById(String id) {
         Task task = taskRepository.findById(id)
                 .orElse(null);
@@ -535,9 +573,9 @@ public class TaskService {
         if (data.containsKey("description")) task.setDescription((String) data.get("description"));
         if (data.containsKey("moduleId") && data.get("moduleId") != null) { assertModule((String) data.get("moduleId")); task.setModuleId((String) data.get("moduleId")); }
         if (data.containsKey("clientId"))    task.setClientId((String) data.get("clientId"));
-        if (data.containsKey("dateGiven") && data.get("dateGiven") != null) task.setDateGiven(Instant.parse((String)data.get("dateGiven")));
-        if (data.containsKey("plannedStartDate") && data.get("plannedStartDate") != null) task.setPlannedStartDate(Instant.parse((String)data.get("plannedStartDate")));
-        if (data.containsKey("plannedEndDate")   && data.get("plannedEndDate")   != null) task.setPlannedEndDate(Instant.parse((String)data.get("plannedEndDate")));
+        if (data.containsKey("dateGiven") && data.get("dateGiven") != null) task.setDateGiven(parseInstant((String)data.get("dateGiven"), null));
+        if (data.containsKey("plannedStartDate") && data.get("plannedStartDate") != null) task.setPlannedStartDate(parseInstant((String)data.get("plannedStartDate"), null));
+        if (data.containsKey("plannedEndDate")   && data.get("plannedEndDate")   != null) task.setPlannedEndDate(parseInstant((String)data.get("plannedEndDate"), null));
 
         // managers
         if (data.containsKey("managerIds") || data.containsKey("managerId")) {

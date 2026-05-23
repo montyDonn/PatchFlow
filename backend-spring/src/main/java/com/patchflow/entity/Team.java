@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "\"Team\"")
+@Table(name = "Team")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Team {
 
@@ -19,7 +19,8 @@ public class Team {
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @Column(name = "\"createdAt\"", nullable = false, updatable = false)
+    @Builder.Default
+    @Column(name = "createdAt", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
     @OneToMany(mappedBy = "team")
@@ -29,5 +30,6 @@ public class Team {
     @PrePersist
     protected void onCreate() {
         if (this.id == null) this.id = java.util.UUID.randomUUID().toString();
+        if (this.createdAt == null) this.createdAt = Instant.now();
     }
 }

@@ -2,6 +2,8 @@ package com.patchflow.entity;
 
 import com.patchflow.config.UUIDStringConverter;
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import lombok.*;
 
 import java.time.Instant;
@@ -9,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "\"Task\"")
+@Table(name = "Task")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Task {
 
@@ -17,7 +19,7 @@ public class Task {
     @Column(name = "id", nullable = false)
     private String id;
 
-    @Column(name = "\"clientRequestId\"", nullable = false)
+    @Column(name = "clientRequestId", nullable = false)
     private int clientRequestId = 0;
 
     @Column(name = "title", nullable = false)
@@ -29,99 +31,101 @@ public class Task {
     @Column(name = "status", nullable = false)
     private String status = "DRAFT";
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"authorId\"", columnDefinition = "uuid", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "authorId", columnDefinition = "uuid", nullable = false)
     private String authorId;
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"assigneeId\"", columnDefinition = "uuid")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "assigneeId", columnDefinition = "uuid")
     private String assigneeId;
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"approverId\"", columnDefinition = "uuid")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "approverId", columnDefinition = "uuid")
     private String approverId;
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"deployerId\"", columnDefinition = "uuid")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "deployerId", columnDefinition = "uuid")
     private String deployerId;
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"verifierId\"", columnDefinition = "uuid")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "verifierId", columnDefinition = "uuid")
     private String verifierId;
 
-    @Column(name = "\"teamId\"")
+    @Column(name = "teamId")
     private String teamId;
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"moduleId\"", columnDefinition = "uuid")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "moduleId", columnDefinition = "uuid")
     private String moduleId;
 
-    @Column(name = "\"assignedAt\"")
+    @Column(name = "assignedAt")
     private Instant assignedAt;
 
-    @Column(name = "\"plannedStartDate\"")
+    @Column(name = "plannedStartDate")
     private Instant plannedStartDate;
 
-    @Column(name = "\"plannedEndDate\"")
+    @Column(name = "plannedEndDate")
     private Instant plannedEndDate;
 
-    @Column(name = "\"completedAt\"")
+    @Column(name = "completedAt")
     private Instant completedAt;
 
-    @Column(name = "\"createdAt\"", nullable = false, updatable = false)
+    @Builder.Default
+    @Column(name = "createdAt", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
-    @Column(name = "\"updatedAt\"", nullable = false)
+    @Builder.Default
+    @Column(name = "updatedAt", nullable = false)
     private Instant updatedAt = Instant.now();
 
-    @Column(name = "\"lifecycleStatus\"", nullable = false)
+    @Column(name = "lifecycleStatus", nullable = false)
     private int lifecycleStatus = 0;
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"clientId\"", columnDefinition = "uuid")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "clientId", columnDefinition = "uuid")
     private String clientId;
 
-    @Column(name = "\"dateGiven\"")
+    @Column(name = "dateGiven")
     private Instant dateGiven;
 
-    @Column(name = "\"dateStarted\"")
+    @Column(name = "dateStarted")
     private Instant dateStarted;
 
-    @Column(name = "\"dateEnded\"")
+    @Column(name = "dateEnded")
     private Instant dateEnded;
 
     // ── Singular relations ───────────────────────────────────────────────────
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"authorId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "authorId", insertable = false, updatable = false)
     private User author;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"clientId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "clientId", insertable = false, updatable = false)
     private User client;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"approverId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "approverId", insertable = false, updatable = false)
     private User approver;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"deployerId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "deployerId", insertable = false, updatable = false)
     private User deployer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"verifierId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "verifierId", insertable = false, updatable = false)
     private User verifier;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"assigneeId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "assigneeId", insertable = false, updatable = false)
     private User assignee;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"moduleId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "moduleId", insertable = false, updatable = false)
     private AppModule module;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "\"teamId\"", insertable = false, updatable = false)
+    @JoinColumn(name = "teamId", insertable = false, updatable = false)
     private Team team;
 
     // ── Many-to-many ─────────────────────────────────────────────────────────
@@ -176,6 +180,7 @@ public class Task {
     @PrePersist
     protected void onCreate() {
         if (this.id == null) this.id = java.util.UUID.randomUUID().toString();
+        if (this.createdAt == null) this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 

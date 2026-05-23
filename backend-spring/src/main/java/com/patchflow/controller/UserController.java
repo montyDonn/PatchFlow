@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.SecureRandom;
@@ -47,6 +48,7 @@ public class UserController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getUsers(
             @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "false") boolean includeModules,
@@ -65,6 +67,7 @@ public class UserController {
     }
 
     @GetMapping("/{userId}/modules")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getUserModules(@PathVariable String userId, HttpServletRequest req) {
         Auth.require(req);
         User user = userRepository.findById(userId).orElse(null);

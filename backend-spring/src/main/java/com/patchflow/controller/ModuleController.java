@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -52,6 +53,7 @@ public class ModuleController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getModules(@RequestParam(defaultValue = "false") boolean includeUsers, HttpServletRequest req) {
         Auth.require(req);
         List<AppModule> modules = moduleRepository.findAllByOrderByModuleNameAsc();
@@ -59,6 +61,7 @@ public class ModuleController {
     }
 
     @GetMapping("/hierarchy")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getHierarchy(HttpServletRequest req) {
         Auth.requireRole(req, "SUPER_ADMIN", "ADMIN");
         List<AppModule> modules = moduleRepository.findAllByOrderByModuleNameAsc();
@@ -82,6 +85,7 @@ public class ModuleController {
     }
 
     @GetMapping("/{moduleId}")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> getModule(@PathVariable String moduleId, HttpServletRequest req) {
         Auth.require(req);
         return moduleRepository.findById(moduleId)

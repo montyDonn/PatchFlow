@@ -3,25 +3,27 @@ package com.patchflow.entity;
 import com.patchflow.config.UUIDStringConverter;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "\"User\"")
+@Table(name = "User")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class User {
 
     @Id
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"userId\"", columnDefinition = "uuid", updatable = false, nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "userId", columnDefinition = "uuid", updatable = false, nullable = false)
     private String userId;
 
     @Column(name = "username", nullable = false, unique = true)
     private String username;
 
-    @Column(name = "\"passwordHash\"", nullable = false)
+    @Column(name = "passwordHash", nullable = false)
     private String passwordHash;
 
     @Column(name = "salt", nullable = false)
@@ -36,20 +38,22 @@ public class User {
     @Column(name = "designation")
     private String designation;
 
-    @Column(name = "\"previousDesignation\"")
+    @Column(name = "previousDesignation")
     private String previousDesignation;
 
-    @Column(name = "\"isActive\"", nullable = false)
+    @Column(name = "isActive", nullable = false)
     private boolean isActive = true;
 
-    @Column(name = "\"createdAt\"", nullable = false, updatable = false)
+    @Builder.Default
+    @Column(name = "createdAt", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
-    @Column(name = "\"updatedAt\"", nullable = false)
+    @Builder.Default
+    @Column(name = "updatedAt", nullable = false)
     private Instant updatedAt = Instant.now();
 
-    @Convert(converter = UUIDStringConverter.class)
-    @Column(name = "\"createdBy\"", columnDefinition = "uuid")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "createdBy", columnDefinition = "uuid")
     private String createdBy;
 
     // ── Relations ────────────────────────────────────────────────────────────
