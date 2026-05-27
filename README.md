@@ -1,577 +1,276 @@
-# PatchFlow — Technical Specification & Developer Guide
+# PatchFlow: Enterprise Patch & Release Governance Platform
 
-PatchFlow is a full-stack enterprise web application that manages the complete lifecycle of software patches — code changes, configuration updates, and infrastructure changes — from request creation through assignment, development, verification, and completion.
-
-This version of PatchFlow is built using:
-
-- **Backend:** Spring Boot 3 + Java 21
-- **Frontend:** React + Vite + Tailwind CSS
-- **Database:** PostgreSQL 15
-- **Authentication:** Secure Session-Based Authentication
-- **ORM:** Spring Data JPA + Hibernate
+Welcome to the **PatchFlow** technical architecture and operations guide. PatchFlow is an enterprise-grade release governance and workflow tracking system. It enforces strict role-based lifecycle transitions for deployment patches, configuration modifications, and database schema updates.
 
 ---
 
-# Table of Contents
+## 1. Problem Space & Business Case
 
-1. What Is PatchFlow?
-2. Simple Workflow
-3. Project Structure
-4. Technology Stack
-5. System Architecture
-6. Database Schema
-7. Workflow State Machine
-8. Role-Based Access Control (RBAC)
-9. API Endpoints
-10. Security Architecture
-11. Running the Project
-12. Design Decisions
-13. Scalability Roadmap
-14. Demo Accounts
+### The Problem
+In enterprise software development, deploying patches to staging, production, or client-isolated environments without a centralized governance mechanism introduces severe operational risks:
+* **Untracked Deployments:** Ad-hoc database alterations and configuration updates occur without centralized logging or clear lineage.
+* **Workflow Status Drift:** Status updates (e.g., "In Development" to "Completed") are updated manually without validating whether the user is authorized or if prerequisites (e.g., QA verification) are met.
+* **Security & Audit Failures:** Regulatory audits require immutable proof of *who* requested a change, *who* approved the codebase alteration, *who* verified the patch, and *what* was uploaded.
+* **Unstructured File/Asset Management:** Patch binaries, database scripts, and client requirement files are often uploaded to generic cloud folders, lacking ownership boundaries and directory structure.
+* **Lazy Query Latency:** Standard microservices architectures suffer from database latency (N+1 queries) when fetching complex multi-user/multi-module task relationships over remote PostgreSQL pools.
 
----
-
-# 1. What Is PatchFlow?
-
-PatchFlow is an enterprise-grade deployment governance platform designed to manage software patch workflows across teams.
-
-It provides:
-
-| Capability                 | Description                              |
-| -------------------------- | ---------------------------------------- |
-| Patch Lifecycle Management | Complete workflow from DRAFT → COMPLETED |
-| Role-Based Access Control  | Strict permissions for each role         |
-| Immutable Audit Logs       | Full history tracking of every action    |
-| Kanban Workflow Board      | Visual patch management                  |
-| Reports & Export           | Excel, CSV, PDF exports                  |
-| Notifications              | Workflow event notifications             |
-| Soft Delete                | No hard deletion of business data        |
-| Multi-Role Assignments     | Multiple developers/verifiers/managers   |
+### The Solution: PatchFlow Approach
+PatchFlow addresses these challenges through a secure, high-performance web platform featuring:
+* **Deterministic State Machine Enforcer:** Code-level validation restricting transitions to specific authorized user roles.
+* **Interactive Metrics Dashboard:** Real-time visual metrics showing patch distributions across all lifecycle stages with clickable filters and SVG charts.
+* **Multi-Role Kanban Workspace:** Kanban board split by development status with quick-action toggles (e.g., to view soft-deleted patches).
+* **Isolated Client-Based Sandbox Store:** Real-time upload service saving attachments under client-specific directories (`uploads/{clientId}/`).
+* **Immutable Audit Trail:** Logging of every state change, assigning user, verifier, and action timestamps.
+* **Eager-Loaded Relationship Layer:** `JOIN FETCH` queries reducing API response times to **< 30ms** on Neon Postgres clouds.
 
 ---
 
-# 2. Simple Workflow
+## 2. Platform Architecture & Data Flow
 
-```text
-CLIENT creates patch
-        ↓
-ASSIGNED to MANAGER
-        ↓
-MANAGER assigns developers/verifiers
-        ↓
-PENDING_APPROVAL
-        ↓
-IN_DEVELOPMENT
-        ↓
-VERIFYING
-        ↓
-COMPLETED / REJECTED / RETURNED
-```
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client / Author
+    actor Manager as Project Manager
+    actor Developer as Software Developer
+    actor Verifier as QA Verifier
+    participant UI as React Frontend (Vite)
+    participant API as Spring Boot API (Java 21)
+    participant DB as PostgreSQL (Neon)
 
-Every action is tracked in audit history.
-
----
-
-# 3. Project Structure
-
-```text
-/patchflow
-├── backend/                         ← Spring Boot Backend
-│
-│   ├── src/main/java/com/patchflow
-│   │
-│   │   ├── config/                 ← Security, CORS, JWT/session configs
-│   │   ├── controller/             ← REST Controllers
-│   │   ├── service/                ← Business Logic Layer
-│   │   ├── repository/             ← JPA Repositories
-│   │   ├── entity/                 ← JPA Entities
-│   │   ├── dto/                    ← Request/Response DTOs
-│   │   ├── mapper/                 ← Entity-DTO mappers
-│   │   ├── security/               ← Authentication & authorization
-│   │   ├── exception/              ← Global exception handling
-│   │   ├── util/                   ← Utility classes
-│   │   └── PatchFlowApplication.java
-│   │
-│   ├── src/main/resources/
-│   │   ├── application.yml
-│   │   └── db/migration/           ← Flyway migrations
-│   │
-│   ├── pom.xml
-│   └── Dockerfile
-│
-├── frontend/                       ← React Frontend
-│
-│   ├── src/
-│   │
-│   │   ├── api/
-│   │   ├── components/
-│   │   ├── hooks/
-│   │   ├── pages/
-│   │   ├── store/
-│   │   ├── routes/
-│   │   ├── layouts/
-│   │   └── App.tsx
-│   │
-│   ├── package.json
-│   └── vite.config.ts
-│
-├── docker-compose.yml
-└── README.md
+    Client->>UI: Create Patch Request (File attached)
+    UI->>API: POST /api/tasks (JSON payload + Multipart file)
+    Note over API: AuthTokenFilter validates session SHA-256 hash
+    API->>API: TaskService writes file to uploads/{clientId}/
+    API->>DB: INSERT Task & TaskAttachment (Status = DRAFT)
+    DB-->>API: Persist record
+    API-->>UI: 201 Created (Normalized Task JSON)
+    
+    Client->>UI: Submit Patch for Assignment
+    UI->>API: PATCH /api/tasks/{id}/status (Status -> ASSIGNED)
+    API->>DB: Save status update & Create Notification for Manager
+    
+    Manager->>UI: Approve assignments & developers
+    UI->>API: PATCH /api/tasks/{id}/status (Status -> PENDING_APPROVAL)
+    
+    Developer->>UI: Start patch execution
+    UI->>API: PATCH /api/tasks/{id}/status (Status -> IN_DEVELOPMENT)
+    
+    Developer->>UI: Submit binary for QA
+    UI->>API: PATCH /api/tasks/{id}/status (Status -> VERIFYING)
+    
+    Verifier->>UI: Perform QA verification & finalize
+    UI->>API: PATCH /api/tasks/{id}/status (Status -> COMPLETED)
+    API->>DB: Update dateEnded & generate AuditLog
 ```
 
 ---
 
-# 4. Technology Stack
+## 3. Strict State Machine Lifecycle
 
-## 4.1 Backend — Spring Boot + Java
+The platform enforces a unidirectional/conditional state machine to ensure patches flow logically from creation to completion:
 
-| Technology      | Purpose                        |
-| --------------- | ------------------------------ |
-| Java 21         | Main programming language      |
-| Spring Boot 3   | Backend framework              |
-| Spring Web      | REST APIs                      |
-| Spring Security | Authentication & authorization |
-| Spring Data JPA | ORM abstraction                |
-| Hibernate       | ORM engine                     |
-| PostgreSQL      | Relational database            |
-| Flyway          | Database migrations            |
-| Lombok          | Boilerplate reduction          |
-| Maven           | Dependency management          |
-| MapStruct       | DTO mapping                    |
-| Validation API  | Request validation             |
+| Current Status | Target Status | Authorized Roles | Action Description |
+| :--- | :--- | :--- | :--- |
+| **DRAFT** | `ASSIGNED` | CLIENT, Admin, Task Author | Submits the patch request and assigns it to managers. |
+| **ASSIGNED** | `PENDING_APPROVAL` | MANAGER, ADMIN | Approves the managers, developers, and QA verifiers assigned. |
+| **PENDING_APPROVAL** | `IN_DEVELOPMENT` | MANAGER, ADMIN, Team Manager | Approves starting developer operations. Sets `dateStarted`. |
+| **IN_DEVELOPMENT** | `VERIFYING` | Assigned DEVELOPER | Indicates coding is finished; hands over patch to QA verifiers. |
+| **VERIFYING** | `COMPLETED` | Assigned VERIFIER | Confirms QA testing passed. Sets `dateEnded` (Terminal status). |
+| **VERIFYING** | `RETURNED_TO_DEVELOPER` | Assigned VERIFIER | Verification failed; returns patch for rework. |
+| **VERIFYING** | `REJECTED` | Assigned VERIFIER | Reject change request completely (Terminal status). |
+| **VERIFYING** | `DELAYED` | Assigned VERIFIER | Delay patch implementation (can move back to Development). |
+| **VERIFYING** | `ON_HOLD` | Assigned VERIFIER | Hold patch implementation (can move back to Development). |
+| **VERIFYING** | `CANCELLED` | Assigned VERIFIER | Cancel patch request (Terminal status). |
 
----
-
-## Why Spring Boot?
-
-Spring Boot provides:
-
-- Enterprise-grade architecture
-- Strong security ecosystem
-- Dependency injection
-- Transaction management
-- Scalable layered architecture
-- Production-ready observability
-- Mature ecosystem for large systems
-
-Compared to Node.js/Express:
-
-- Better structured for large enterprise systems
-- Stronger compile-time safety
-- Easier transactional consistency
-- Better multithreading model
-- More common in enterprise/government organizations
+*Note: System Administrators bypass state constraints for emergency releases.*
 
 ---
 
-## 4.2 Frontend — React + Vite + Tailwind
+## 4. Technical Stack Details
 
-| Technology      | Purpose           |
-| --------------- | ----------------- |
-| React 19        | Frontend UI       |
-| Vite            | Build tool        |
-| Tailwind CSS    | Styling           |
-| Zustand         | Global state      |
-| Axios           | API communication |
-| React Router    | Routing           |
-| React Hook Form | Form handling     |
-| Zod             | Validation        |
+### Frontend Web Application
+* **Framework Engine:** React 19.2.6 & TypeScript 6.0.2 (strict compilation).
+* **Build System:** Vite 8.0.14 (super-fast Hot Module Replacement).
+* **Styling & Theme:** Tailwind CSS 4.3.0 utilizing a custom glassmorphism configuration, vibrant dark-mode gradients, and smooth state-change micro-animations.
+* **State Management:** Zustand 5.0.13 with persistent client storage middleware (`auth-storage`).
+* **Icons & Assets:** Lucide React 1.14.0.
+* **Export Utilities:** XLSX Sheets (`xlsx` v0.18.5) for tabular report exporting.
 
----
-
-## 4.3 Database — PostgreSQL
-
-PatchFlow uses PostgreSQL 15.
-
-Why PostgreSQL:
-
-- ACID compliance
-- Strong relational support
-- JSON support
-- Advanced indexing
-- Excellent transactional integrity
+### Backend REST API
+* **Language Runtime:** Java 21 (LTS).
+* **Application Framework:** Spring Boot 3.3.5.
+* **Object-Relational Mapping (ORM):** Hibernate 6 / Spring Data JPA.
+* **Database Driver:** PostgreSQL JDBC Driver.
+* **Authentication Engine:** BCrypt-based security hashing & SHA-256 session mapping filter.
+* **JSON Serialization:** Jackson Databind.
+* **Build & Dependency Automation:** Apache Maven 3.9+.
 
 ---
 
-## 4.4 Authentication
+## 5. Directory & Codebase Structure
 
-PatchFlow uses secure session/token-based authentication with Spring Security.
+### Backend Architecture (`/backend`)
+```
+backend/
+├── pom.xml                               # Maven project dependencies and build plugins
+└── src/main/java/com/patchflow/
+    ├── PatchFlowApplication.java         # Spring Boot entry point
+    ├── config/                           # Configuration layer
+    │   ├── Auth.java                     # Utility helper functions validating request identities
+    │   ├── DataSeeder.java               # Seeds default users, active modules, and DB permissions
+    │   ├── SecurityConfig.java           # BCrypt password encoder initialization
+    │   ├── UUIDStringConverter.java      # JPA AttributeConverter for PostgreSQL UUID mappings
+    │   └── WebConfig.java                # CORS origins and AuthTokenFilter registration
+    ├── controller/                       # REST endpoint definitions
+    │   ├── AuthController.java           # Sessions login/logout endpoints
+    │   ├── HealthController.java         # Simple health check endpoint
+    │   ├── ModuleController.java         # Module hierarchies and assignment endpoints
+    │   ├── NotificationController.java   # Retrieves notifications triggered by workflow events
+    │   ├── ReportController.java         # Handles audit trails and in-memory reports processing
+    │   ├── TaskController.java           # Handles CRUD, file uploads, comments, and state updates
+    │   └── TeamController.java           # Retrieves development teams
+    ├── entity/                           # JPA Database Entities
+    │   ├── AppModule.java                # Mapping for NSC, DND, CSC, BILLING, etc.
+    │   ├── AuditLog.java                 # Immutable tracking of every status change
+    │   ├── Notification.java             # User notification records
+    │   ├── Project.java                  # Holds high-level modules grouping
+    │   ├── Session.java                  # Stores hashed session tokens mapped to active users
+    │   ├── StatusHistory.java            # Records stage change reasons and actor tags
+    │   ├── Task.java                     # Central Patch entity holding managers, developers, verifiers
+    │   ├── TaskAttachment.java           # Holds names, types, sizes, and sandbox store URLs
+    │   ├── TaskComment.java              # User comments with support for file links
+    │   ├── Team.java                     # Represents structural developer divisions
+    │   ├── User.java                     # Defines roles, hashed credentials, and active states
+    │   └── UserManager.java              # Direct many-to-many relationship mapping managers to juniors
+    ├── filter/                           # Servlet filter layer
+    │   └── AuthTokenFilter.java          # Intercepts requests, hashes Bearer token, fetches user session
+    └── repository/                       # Spring Data JPA Repository interfaces
+        ├── AppModuleRepository.java
+        ├── AuditLogRepository.java
+        ├── NotificationRepository.java
+        ├── ProjectRepository.java
+        ├── SessionRepository.java
+        ├── StatusHistoryRepository.java
+        ├── TaskRepository.java           # Declares eager JOIN FETCH queries for optimal latency
+        ├── TeamRepository.java
+        ├── UserManagerRepository.java
+        └── UserRepository.java
+```
 
-Features:
-
-- BCrypt password hashing
-- Role-based authorization
-- Session expiration
-- Token revocation
-- Protected APIs
-- Request filtering
-
----
-
-# 5. System Architecture
-
-```text
-React Frontend
-      ↓
-Axios HTTP Client
-      ↓
-Spring Boot REST API
-      ↓
-Service Layer
-      ↓
-JPA/Hibernate
-      ↓
-PostgreSQL
+### Frontend Architecture (`/frontend`)
+```
+frontend/
+├── package.json                          # Vite and React dependencies
+├── vite.config.ts                        # Dev-server port routing and compilation mappings
+├── index.html                            # Root HTML template
+└── src/
+    ├── main.tsx                          # App initialization entry point
+    ├── App.tsx                           # Defines React routing, route protection, and boundaries
+    ├── index.css                         # CSS design system (Tailwind imports and custom animations)
+    ├── api/                              # HTTP clients
+    │   ├── client.ts                     # Axios wrapper injection, header interceptor, and 401 hooks
+    │   ├── modules.ts                    # Handles API calls for modules and assignments
+    │   ├── tasks.ts                      # Handles API calls for patch operations, comments, and uploads
+    │   └── users.ts                      # Handles API calls for user accounts operations
+    ├── store/                            # Zustand store declarations
+    │   └── authStore.ts                  # Persisted authorization and user session state
+    ├── components/                       # Shared layout and details interfaces
+    │   ├── CreatePatchModal.tsx          # Panel capturing patch inputs, modules, assignments, and files
+    │   ├── ErrorBoundary.tsx             # Catches and reports React rendering errors gracefully
+    │   ├── Layout.tsx                    # Houses Sidebar, Topbar, and Outlet pages mapping
+    │   ├── layout/
+    │   │   └── SwitchAccountDropdown.tsx # Account switcher dropdown allowing dynamic login changes
+    │   └── patches/
+    │       ├── PatchDetailsModal.tsx     # Details modal, comments feed, timeline and file downloads
+    │       └── PatchStatusBadge.tsx      # Renders clean, color-coded badges matching status
+    └── pages/                            # Navigable views mapped by React Router
+        ├── AdminPage.tsx                 # Superadmin panel to add users, edit details, reset passwords
+        ├── Dashboard.tsx                 # Metrics page with dynamic SVGs and click-to-open tasks
+        ├── Login.tsx                     # Form capturing username and passwords
+        ├── ModuleAssignmentsPage.tsx     # Grid showing manager mappings to modules
+        ├── ModulesPage.tsx               # Enables creation and toggle states of system modules
+        ├── PatchBoardPage.tsx            # Kanban view showing active and soft-deleted columns
+        ├── ReportsPage.tsx               # Filters tasks by date range and exports report to Excel
+        └── ResourceHierarchyPage.tsx     # Nested structural hierarchy visualization
 ```
 
 ---
 
-# Backend Layered Architecture
+## 6. Setup & Execution Instructions
 
-```text
-Controller Layer
-        ↓
-Service Layer
-        ↓
-Repository Layer
-        ↓
-Database
-```
+Ensure you have the following installed locally:
+* **Java Development Kit (JDK) 21**
+* **Maven 3.9+**
+* **Node.js 20+**
+* **PostgreSQL Database** (or access to Neon Cloud instance)
 
-### Controller Layer
+### 1. Database Configuration
+Verify the Spring Boot database configuration by editing `backend/src/main/resources/application.properties` or passing a `DATABASE_URL` environment variable during run execution.
 
-- Handles HTTP requests/responses
+Example Connection String:
+`jdbc:postgresql://<host>:<port>/<db_name>?sslmode=require&user=<user>&password=<password>`
 
-### Service Layer
-
-- Core business logic
-- Workflow transitions
-- Validation
-- Auditing
-
-### Repository Layer
-
-- Database operations using JPA
-
-### Entity Layer
-
-- Database models
-
----
-
-# 6. Database Schema
-
-Core entities:
-
-| Entity        | Purpose                  |
-| ------------- | ------------------------ |
-| User          | System users             |
-| Role          | RBAC roles               |
-| Task          | Patch/task entity        |
-| Module        | System modules           |
-| AuditLog      | Immutable audit tracking |
-| StatusHistory | Workflow history         |
-| Notification  | User notifications       |
-| Comment       | Patch comments           |
-| Attachment    | File metadata            |
-| Session       | Authentication sessions  |
-
----
-
-# Example Task Entity
-
-```java
-@Entity
-@Table(name = "tasks")
-public class Task {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-
-    private String title;
-
-    private String description;
-
-    @Enumerated(EnumType.STRING)
-    private TaskStatus status;
-
-    private Integer lifecycleStatus = 0;
-
-}
-```
-
----
-
-# 7. Workflow State Machine
-
-## Statuses
-
-```text
-DRAFT
-ASSIGNED
-PENDING_APPROVAL
-IN_DEVELOPMENT
-VERIFYING
-COMPLETED
-RETURNED_TO_DEVELOPER
-REJECTED
-DELAYED
-ON_HOLD
-CANCELLED
-```
-
----
-
-## Allowed Workflow
-
-```text
-DRAFT → ASSIGNED
-ASSIGNED → PENDING_APPROVAL
-PENDING_APPROVAL → IN_DEVELOPMENT
-IN_DEVELOPMENT → VERIFYING
-VERIFYING → COMPLETED
-VERIFYING → RETURNED_TO_DEVELOPER
-VERIFYING → REJECTED
-VERIFYING → DELAYED
-VERIFYING → ON_HOLD
-VERIFYING → CANCELLED
-```
-
----
-
-# 8. Role-Based Access Control (RBAC)
-
-## Roles
-
-| Role        | Responsibilities                |
-| ----------- | ------------------------------- |
-| SUPER_ADMIN | Full access                     |
-| ADMIN       | Administrative control          |
-| MANAGER     | Resource assignment & approvals |
-| DEVELOPER   | Development work                |
-| VERIFIER    | QA & verification               |
-| CLIENT      | Patch request creation          |
-
----
-
-# 9. API Endpoints
-
-## Authentication APIs
-
-| Method | Endpoint             |
-| ------ | -------------------- |
-| POST   | `/api/auth/login`    |
-| POST   | `/api/auth/register` |
-| POST   | `/api/auth/logout`   |
-| GET    | `/api/auth/me`       |
-
----
-
-## Task APIs
-
-| Method | Endpoint                 |
-| ------ | ------------------------ |
-| GET    | `/api/tasks`             |
-| GET    | `/api/tasks/{id}`        |
-| POST   | `/api/tasks`             |
-| PATCH  | `/api/tasks/{id}/status` |
-| DELETE | `/api/tasks/{id}`        |
-
----
-
-## User APIs
-
-| Method | Endpoint          |
-| ------ | ----------------- |
-| GET    | `/api/users`      |
-| POST   | `/api/users`      |
-| PUT    | `/api/users/{id}` |
-| DELETE | `/api/users/{id}` |
-
----
-
-# 10. Security Architecture
-
-| Feature                  | Implementation                  |
-| ------------------------ | ------------------------------- |
-| Password Hashing         | BCrypt                          |
-| Authentication           | Spring Security                 |
-| Authorization            | RBAC                            |
-| Session Management       | Secure token/session            |
-| SQL Injection Protection | Hibernate parameterized queries |
-| Input Validation         | Bean Validation API             |
-| Audit Logging            | Immutable logs                  |
-| Soft Deletes             | lifecycleStatus                 |
-
----
-
-# 11. Running the Project
-
-## Prerequisites
-
-- Java 21
-- Maven
-- Node.js 20+
-- PostgreSQL 15
-- Docker (optional)
-
----
-
-## Backend Setup
-
+### 2. Run Backend API Server
+Navigate to the backend directory, compile packages, and boot the server:
 ```bash
 cd backend
-
-mvn clean install
-
-mvn spring-boot:run
+mvn clean compile
+DATABASE_URL="jdbc:postgresql://..." mvn spring-boot:run
 ```
+The backend server will run on `http://localhost:8080`.
 
-Backend runs on:
-
-```text
-http://localhost:8080
-```
-
----
-
-## Frontend Setup
-
+### 3. Run Frontend Web App
+Navigate to the frontend directory, install dependencies, and start the development server:
 ```bash
 cd frontend
-
-npm install
-
+npm install --legacy-peer-deps
 npm run dev
 ```
-
-Frontend runs on:
-
-```text
-http://localhost:5173
-```
+The web app will boot locally on `http://localhost:5173`.
 
 ---
 
-## Database Configuration
+## 7. Demo Accounts & Access Matrix
 
-```yaml
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/patchflow
-    username: postgres
-    password: password
+All seeded demo accounts are configured with the default password: **`upcl@123`**
 
-  jpa:
-    hibernate:
-      ddl-auto: update
-
-    show-sql: true
-```
-
----
-
-# 12. Design Decisions
-
-## Why Spring Boot Instead of Node.js?
-
-| Spring Boot                      | Node.js                  |
-| -------------------------------- | ------------------------ |
-| Better enterprise adoption       | Lightweight              |
-| Strong type safety               | Flexible                 |
-| Excellent transaction management | Faster development       |
-| Better for large monoliths       | Better for microservices |
-| Mature security ecosystem        | Simpler architecture     |
-
-PatchFlow prioritizes:
-
-- enterprise reliability
-- maintainability
-- scalability
-- security
-- strict workflow consistency
-
-Therefore Spring Boot is a better fit.
+| Core Profile / Designation | Username | Role Mapping | Purpose / Capabilities |
+| :--- | :--- | :--- | :--- |
+| **System Administrator** | `admin` | `ADMIN` | Full CRUD operations, user management, module deletions. |
+| **Project Manager** | `manager1` | `MANAGER` | Approves assignment pipelines, manages development teams. |
+| **Project Manager** | `manager2` | `MANAGER` | Approves assignment pipelines, manages development teams. |
+| **Project Manager** | `manager3` | `MANAGER` | Approves assignment pipelines, manages development teams. |
+| **Project Manager** | `manager4` | `MANAGER` | Approves assignment pipelines, manages development teams. |
+| **Software Developer** | `developer1` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
+| **Software Developer** | `developer2` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
+| **Software Developer** | `developer3` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
+| **Software Developer** | `developer4` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
+| **QA Engineer / Verifier** | `verifier1` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
+| **QA Engineer / Verifier** | `verifier2` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
+| **QA Engineer / Verifier** | `verifier3` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
+| **QA Engineer / Verifier** | `verifier4` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
+| **Client Owner** | `client1` | `CLIENT` | Submits new requests, monitors progress, downloads uploads. |
+| **Client Owner** | `client2` | `CLIENT` | Submits new requests, monitors progress, downloads uploads. |
+| **UPCL Client Viewer** | `upclviewer1` | `UPCL_VIEWER` | Read-only observation of reports and active pipelines. |
+| **General Viewer** | `admin1` | `VIEWER` | Read-only observation of reports and active pipelines. |
 
 ---
 
-# 13. Scalability Roadmap
+## 8. Screen Walkthrough & Reference Views
 
-| Phase       | Architecture                  |
-| ----------- | ----------------------------- |
-| MVP         | Single Spring Boot instance   |
-| Growth      | Load-balanced instances       |
-| Enterprise  | Microservices + Kafka + Redis |
-| Large Scale | Kubernetes deployment         |
+### 1. Interactive Metrics Dashboard
+Aggregates live statistics distribution with dynamic status cards to filter active patches on demand.
+![Dashboard](screenshots/dashboard.png)
 
-Future improvements:
+### 2. Multi-Role Kanban Board
+Renders development stages sequentially, with a dedicated toggle for admins to view soft-deleted patches.
+![Kanban Board](screenshots/kanban_board.png)
 
-- Redis caching
-- Kafka event streaming
-- WebSockets
-- Elasticsearch
-- CI/CD pipelines
-- File storage service
+### 3. Patch Details & Isolated File Sandbox
+Manage assignments, comments feeds, and upload binary files directly to the client's storage folder.
+![Patch Details](screenshots/patch_details.png)
 
----
-
-# 14. Demo Accounts
-
-Password for all demo accounts:
-
-```text
-Admin@123
-```
-
-| Username    | Role        |
-| ----------- | ----------- |
-| superadmin1 | SUPER_ADMIN |
-| admin1      | ADMIN       |
-| manager1    | MANAGER     |
-| developer1  | DEVELOPER   |
-| verifier1   | VERIFIER    |
-| client1     | CLIENT      |
-
----
-
-# Tech Stack Summary
-
-```text
-Frontend
-- React
-- Vite
-- Tailwind CSS
-- Zustand
-- Axios
-
-Backend
-- Spring Boot 3
-- Java 21
-- Spring Security
-- Spring Data JPA
-- Hibernate
-
-Database
-- PostgreSQL 15
-
-DevOps
-- Docker
-- Flyway
-- Maven
-```
-
----
-
-────────────────────────────────────────────────────────
-
-Built By
-
-Shivansh Dharni
-
-GitHub:
-https://github.com/dhxrni
-
-PatchFlow — Enterprise Patch Workflow Management Platform
-
-────────────────────────────────────────────────────────
+### 4. Custom Report Generator
+Generate tabular logs filtering by dates, modules, or users, with clean sheet exports to Excel.
+![Reports](screenshots/reports.png)

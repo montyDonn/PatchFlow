@@ -6,7 +6,7 @@ import { Activity } from "lucide-react";
 
 export function Login() {
   const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("Admin@123");
+  const [password, setPassword] = useState("upcl@123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   
@@ -34,7 +34,7 @@ export function Login() {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center items-center gap-3">
           <Activity className="text-primary-500" size={40} />
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">PatchFlow</h2>
+          <h2 className="text-3xl font-extrabold text-white tracking-tight">Change Management</h2>
         </div>
         <h2 className="mt-6 text-center text-2xl font-bold text-gray-200">
           Sign in to your account
@@ -91,9 +91,11 @@ export function Login() {
               </button>
             </div>
             
-            <div className="mt-4 text-xs text-gray-400 text-center">
-              Demo accounts: superadmin1, admin1, manager1, developer1 (Password: Admin@123)
-            </div>
+            {/* <div className="mt-4 text-xs text-gray-400 text-center space-y-1">
+              <div>All users password: <strong className="text-gray-300 font-mono">upcl@123</strong></div>
+              <div>Client Demo: <strong className="text-gray-300 font-mono">komal, abhishekrishi, sachinp, pankaj</strong></div>
+              <div>Legacy Demo: <strong className="text-gray-300 font-mono">superadmin1, admin1, manager1, developer1, verifier1, client1</strong></div>
+            </div> */}
           </form>
         </div>
       </div>

@@ -4,15 +4,15 @@ import api from '../api/client';
 import { 
   BarChart3, 
   Calendar, 
+  ChevronDown,
+  ChevronUp,
   FileSpreadsheet, 
-  FileText, 
   Filter, 
+  MessageSquare,
   RotateCcw, 
   Search
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
 
 interface User {
   userId: string;
@@ -88,6 +88,10 @@ export default function ReportsPage() {
   const [modules, setModules] = useState<Module[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Expanded row state for audit/comments
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [expandedTab, setExpandedTab] = useState<'comments' | 'history'>('comments');
 
   // Filter states
   const [viewPreset, setViewPreset] = useState<'weekly' | 'monthly' | 'custom'>('weekly');
@@ -165,6 +169,7 @@ export default function ReportsPage() {
     setSelectedVerifier('');
     setSelectedStatus('');
     setSearchQuery('');
+    setExpandedTaskId(null);
   };
 
   // Filter tasks locally by search query
@@ -184,7 +189,7 @@ export default function ReportsPage() {
     return STATUSES.find(s => s.value === val)?.label || val;
   };
 
-  // Generate detailed workflow summary path showing exactly who did what transition
+  // Generate detailed workflow summary path
   const getDetailedWorkflowSummary = (task: Task) => {
     if (!task.statusHistory || task.statusHistory.length === 0) return 'No status history';
     return task.statusHistory.map(h => {
@@ -200,8 +205,7 @@ export default function ReportsPage() {
   // EXPORT EXCEL
   const handleExportExcel = () => {
     const excelData = filteredTasks.map(t => ({
-      'Patch Name': t.title,
-      'Reference No': t.clientRequestId !== undefined ? t.clientRequestId : 'N/A',
+      'Change Name': t.title,
       'Module': t.module?.name || 'N/A',
       'Client': t.client?.name || 'N/A',
       'Managers': t.managers?.map(m => m.name).join(', ') || t.manager?.name || 'N/A',
@@ -218,9 +222,8 @@ export default function ReportsPage() {
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Patches Report");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Changes Report");
     
-    // Adjust column widths
     const maxLens = Object.keys(excelData[0] || {}).map(key => {
       let maxLen = key.length;
       excelData.forEach(row => {
@@ -231,73 +234,11 @@ export default function ReportsPage() {
     });
     worksheet['!cols'] = maxLens;
 
-    XLSX.writeFile(workbook, `PatchFlow_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(workbook, `ChangeManagement_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
-  // ----------------------------------------------------
-  // EXPORT PDF
-  // ----------------------------------------------------
-  const handleExportPDF = () => {
-    const doc = new jsPDF('landscape') as any;
 
-    // Header Title
-    doc.setFontSize(18);
-    doc.setTextColor(31, 41, 55); // dark grey
-    doc.text("PatchFlow Workflow Management System", 14, 20);
-    
-    doc.setFontSize(12);
-    doc.setTextColor(100, 116, 139);
-    doc.text(`Patches Status Report — Generated on: ${new Date().toLocaleString()}`, 14, 27);
-    doc.text(`Time Range Preset: ${viewPreset.toUpperCase()}`, 14, 33);
 
-    const headers = [
-      ['Patch Name', 'Ref No', 'Module', 'Client', 'Managers', 'Developers', 'Verifiers', 'Current Status', 'Date Given', 'Date Started', 'Date Ended', 'Comments', 'Workflow Summary']
-    ];
-
-    const rows = filteredTasks.map(t => [
-      t.title,
-      t.clientRequestId !== undefined ? String(t.clientRequestId) : 'N/A',
-      t.module?.name || 'N/A',
-      t.client?.name || 'N/A',
-      t.managers?.map(m => m.name).join(', ') || t.manager?.name || 'N/A',
-      t.developers.map(d => d.name).join(', ') || 'N/A',
-      t.verifiers.map(v => v.name).join(', ') || 'N/A',
-      getStatusLabel(t.status),
-      t.dateGiven ? new Date(t.dateGiven).toLocaleDateString() : 'N/A',
-      t.dateStarted ? new Date(t.dateStarted).toLocaleDateString() : 'N/A',
-      t.dateEnded ? new Date(t.dateEnded).toLocaleDateString() : 'N/A',
-      t.comments ? String(t.comments.length) : '0',
-      getDetailedWorkflowSummary(t)
-    ]);
-
-    doc.autoTable({
-      head: headers,
-      body: rows,
-      startY: 40,
-      theme: 'grid',
-      styles: { fontSize: 7, cellPadding: 1.5 },
-      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
-      columnStyles: {
-        0: { cellWidth: 18 },
-        1: { cellWidth: 8 },
-        2: { cellWidth: 12 },
-        3: { cellWidth: 12 },
-        4: { cellWidth: 18 },
-        5: { cellWidth: 18 },
-        6: { cellWidth: 18 },
-        7: { cellWidth: 12 },
-        8: { cellWidth: 12 },
-        9: { cellWidth: 12 },
-        10: { cellWidth: 12 },
-        11: { cellWidth: 8 },
-        12: { cellWidth: 'auto' }
-      }
-    });
-
-    doc.save(`PatchFlow_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
-  };
-
-  // Render client view (read-only, only their own patches, high-level progress focus)
   const isClient = currentUser?.role === 'CLIENT';
 
   return (
@@ -307,12 +248,12 @@ export default function ReportsPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <BarChart3 className="text-primary-500" /> {isClient ? 'My Patch Reports' : 'System Reports'}
+            <BarChart3 className="text-primary-500" /> {isClient ? 'My Change Reports' : 'System Reports'}
           </h2>
           <p className="text-gray-400 text-sm mt-1">
             {isClient 
-              ? 'View real-time progress and timeline summaries of your patch requests.' 
-              : 'Detailed breakdown, status summaries, and export capabilities for all active patch workflows.'
+              ? 'View real-time progress and timeline summaries of your change requests.' 
+              : 'Detailed breakdown, status summaries, and export capabilities for all active change workflows.'
             }
           </p>
         </div>
@@ -324,13 +265,6 @@ export default function ReportsPage() {
             className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700/80 border border-gray-700/60 text-gray-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FileSpreadsheet size={16} className="text-green-500" /> Export Excel
-          </button>
-          <button 
-            onClick={handleExportPDF}
-            disabled={filteredTasks.length === 0}
-            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700/80 border border-gray-700/60 text-gray-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <FileText size={16} className="text-red-500" /> Export PDF
           </button>
         </div>
       </div>
@@ -429,7 +363,7 @@ export default function ReportsPage() {
             </select>
           </div>
 
-          {/* Client Select (Hidden/Disabled for Client) */}
+          {/* Client Select (Hidden for Client) */}
           {!isClient && (
             <div className="space-y-1">
               <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Client</label>
@@ -513,7 +447,7 @@ export default function ReportsPage() {
           <Search size={14} className="absolute left-3.5 top-3 text-gray-500" />
           <input 
             type="text"
-            placeholder="Search report by patch name or module name..."
+            placeholder="Search report by change name or module name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-gray-950 border border-gray-850 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-gray-500 focus:border-primary-500 focus:outline-none transition-colors shadow-inner"
@@ -540,8 +474,8 @@ export default function ReportsPage() {
             <table className="w-full border-collapse text-left text-xs">
               <thead className="bg-gray-950 text-gray-400 font-semibold uppercase tracking-wider border-b border-gray-800">
                 <tr>
-                  <th className="px-6 py-4">Patch Name</th>
-                  <th className="px-6 py-4">Ref No</th>
+                  <th className="px-4 py-4 w-8"></th>
+                  <th className="px-6 py-4">Change Name</th>
                   <th className="px-6 py-4">Module</th>
                   <th className="px-6 py-4">Client</th>
                   <th className="px-6 py-4">Managers</th>
@@ -551,100 +485,183 @@ export default function ReportsPage() {
                   <th className="px-6 py-4">Date Given</th>
                   <th className="px-6 py-4">Date Started</th>
                   <th className="px-6 py-4">Date Ended</th>
-                  <th className="px-6 py-4">Comments</th>
-                  <th className="px-6 py-4">Workflow History Summary</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800 text-gray-300">
-                {filteredTasks.map(task => (
-                  <tr key={task.id} className="hover:bg-gray-800/20 transition-colors">
-                    <td className="px-6 py-4 font-semibold text-white truncate max-w-[150px]" title={task.title}>
-                      {task.title}
-                    </td>
-                    <td className="px-6 py-4 font-mono text-gray-300">
-                      {task.clientRequestId !== undefined ? task.clientRequestId : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-0.5 bg-gray-950 rounded border border-gray-800 text-gray-400 font-medium">
-                        {task.module?.name || 'N/A'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 truncate max-w-[100px]" title={task.client?.name || 'N/A'}>
-                      {task.client?.name || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 truncate max-w-[120px]" title={task.managers?.map(m => m.name).join(', ') || task.manager?.name || 'N/A'}>
-                      {task.managers?.map(m => m.name).join(', ') || task.manager?.name || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 truncate max-w-[120px]" title={task.developers.map(d => d.name).join(', ') || 'N/A'}>
-                      {task.developers.map(d => d.name).join(', ') || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 truncate max-w-[120px]" title={task.verifiers.map(v => v.name).join(', ') || 'N/A'}>
-                      {task.verifiers.map(v => v.name).join(', ') || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        task.status === 'COMPLETED' 
-                          ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-                          : task.status === 'IN_DEVELOPMENT'
-                          ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20'
-                          : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                      }`}>
-                        {getStatusLabel(task.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-mono">
-                      {task.dateGiven ? new Date(task.dateGiven).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 font-mono">
-                      {task.dateStarted ? new Date(task.dateStarted).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 font-mono">
-                      {task.dateEnded ? new Date(task.dateEnded).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 max-w-[180px]">
-                      {task.comments && task.comments.length > 0 ? (
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-bold text-gray-400 bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700">
-                            {task.comments.length} comment{task.comments.length > 1 ? 's' : ''}
+                {filteredTasks.map(task => {
+                  const isExpanded = expandedTaskId === task.id;
+                  const commentCount = task.comments?.length || 0;
+                  const historyCount = task.statusHistory?.length || 0;
+
+                  return (
+                    <>
+                      <tr
+                        key={task.id}
+                        className={`hover:bg-gray-800/20 transition-colors cursor-pointer ${isExpanded ? 'bg-gray-800/30' : ''}`}
+                        onClick={() => {
+                          setExpandedTaskId(isExpanded ? null : task.id);
+                          setExpandedTab('comments');
+                        }}
+                      >
+                        <td className="px-4 py-4">
+                          <button
+                            className="text-gray-500 hover:text-primary-400 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedTaskId(isExpanded ? null : task.id);
+                              setExpandedTab('comments');
+                            }}
+                          >
+                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-white truncate max-w-[150px]" title={task.title}>
+                          <div>{task.title}</div>
+                          {/* Show Change ID */}
+                          {(() => {
+                            const m = task.description?.match(/\[CHANGE_ID:\s*([^\]]+)\]/);
+                            const displayId = (task.id && /^\d{12}$/.test(task.id)) ? task.id : (m ? m[1] : task.id);
+                            return displayId ? <div className="text-[10px] text-primary-400 font-mono mt-0.5">#{displayId}</div> : null;
+                          })()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-2 py-0.5 bg-gray-950 rounded border border-gray-800 text-gray-400 font-medium">
+                            {task.module?.name || 'N/A'}
                           </span>
-                          <p className="text-[10px] text-gray-500 truncate" title={task.comments[task.comments.length - 1].content}>
-                            Last: <span className="text-gray-400 font-medium">@{task.comments[task.comments.length - 1].authorName || task.comments[task.comments.length - 1].user?.name || 'User'}</span>: {task.comments[task.comments.length - 1].content}
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-gray-600 italic">No comments</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1 max-w-[320px] max-h-[120px] overflow-y-auto pr-1">
-                        {task.statusHistory && task.statusHistory.length > 0 ? (
-                          task.statusHistory.map((h, index) => {
-                            const actorName = h.actor?.name || h.changedByName || 'System / Author';
-                            const actorRole = h.actor?.role || h.changedByRole || 'System';
-                            return (
-                              <div key={index} className="flex flex-col border-b border-gray-800/40 pb-1 last:border-b-0 last:pb-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-[9px] text-gray-500 font-mono">
-                                    {new Date(h.createdAt).toLocaleDateString()} {new Date(h.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                  </span>
-                                  <span className="text-[10px] text-primary-300 font-semibold">
-                                    {getStatusLabel(h.newStatus)}
-                                  </span>
-                                </div>
-                                <span className="text-[10px] text-gray-400">
-                                  by <span className="text-gray-200 font-medium">{actorName}</span> <span className="text-[9px] text-gray-500 bg-gray-950 px-1 py-0.2 rounded border border-gray-800/80 uppercase font-semibold">{actorRole}</span>
-                                  {h.reason && <span className="text-gray-500 italic font-mono block text-[9px] mt-0.5">"{h.reason}"</span>}
-                                </span>
+                        </td>
+                        <td className="px-6 py-4 truncate max-w-[100px]" title={task.client?.name || 'N/A'}>
+                          {task.client?.name || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 truncate max-w-[120px]" title={task.managers?.map(m => m.name).join(', ') || task.manager?.name || 'N/A'}>
+                          {task.managers?.map(m => m.name).join(', ') || task.manager?.name || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 truncate max-w-[120px]" title={task.developers.map(d => d.name).join(', ') || 'N/A'}>
+                          {task.developers.map(d => d.name).join(', ') || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 truncate max-w-[120px]" title={task.verifiers.map(v => v.name).join(', ') || 'N/A'}>
+                          {task.verifiers.map(v => v.name).join(', ') || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            task.status === 'COMPLETED' 
+                              ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                              : task.status === 'IN_DEVELOPMENT'
+                              ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20'
+                              : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                          }`}>
+                            {getStatusLabel(task.status)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 font-mono">
+                          {task.dateGiven ? new Date(task.dateGiven).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 font-mono">
+                          {task.dateStarted ? new Date(task.dateStarted).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 font-mono">
+                          {task.dateEnded ? new Date(task.dateEnded).toLocaleDateString() : 'N/A'}
+                        </td>
+                      </tr>
+
+                      {/* Expanded Row — Comments & Audit */}
+                      {isExpanded && (
+                        <tr key={`${task.id}-expanded`} className="bg-gray-900/80">
+                          <td colSpan={12} className="px-6 py-4">
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                              {/* Tab Buttons */}
+                              <div className="flex gap-4 border-b border-gray-700 mb-4 pb-2">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setExpandedTab('comments'); }}
+                                  className={`flex items-center gap-1.5 text-xs font-semibold pb-1 border-b-2 transition-colors ${
+                                    expandedTab === 'comments'
+                                      ? 'text-primary-400 border-primary-500'
+                                      : 'text-gray-500 border-transparent hover:text-gray-300'
+                                  }`}
+                                >
+                                  <MessageSquare size={12} />
+                                  Comments ({commentCount})
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setExpandedTab('history'); }}
+                                  className={`flex items-center gap-1.5 text-xs font-semibold pb-1 border-b-2 transition-colors ${
+                                    expandedTab === 'history'
+                                      ? 'text-primary-400 border-primary-500'
+                                      : 'text-gray-500 border-transparent hover:text-gray-300'
+                                  }`}
+                                >
+                                  <RotateCcw size={12} />
+                                  Workflow History ({historyCount})
+                                </button>
                               </div>
-                            );
-                          })
-                        ) : (
-                          <span className="text-gray-600 italic">No history</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+
+                              {expandedTab === 'comments' ? (
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                                  {task.comments && task.comments.length > 0 ? (
+                                    task.comments.map((comment, idx) => (
+                                      <div key={idx} className="flex gap-2 bg-gray-800/50 rounded-lg p-3 border border-gray-700/50">
+                                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] font-bold text-white shrink-0">
+                                          {(comment.authorName || comment.user?.name || 'U')[0].toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                                            <span className="text-xs font-semibold text-gray-200">
+                                              {comment.authorName || comment.user?.name || 'User'}
+                                            </span>
+                                            <span className="text-[10px] text-primary-300 bg-primary-500/10 px-1.5 py-0.5 rounded border border-primary-500/20 uppercase font-semibold">
+                                              {comment.authorRole || comment.user?.role || 'User'}
+                                            </span>
+                                            <span className="text-[10px] text-gray-500 font-mono">
+                                              {new Date(comment.createdAt).toLocaleString()}
+                                            </span>
+                                          </div>
+                                          <p className="text-xs text-gray-300">{comment.content}</p>
+                                        </div>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-xs text-gray-500 italic py-2 text-center">No comments for this change.</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                                  {task.statusHistory && task.statusHistory.length > 0 ? (
+                                    task.statusHistory.map((h, idx) => {
+                                      const actorName = h.actor?.name || h.changedByName || 'System / Author';
+                                      const actorRole = h.actor?.role || h.changedByRole || 'System';
+                                      return (
+                                        <div key={idx} className="flex flex-col bg-gray-800/50 rounded-lg p-3 border border-gray-700/50 gap-1">
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-[10px] text-gray-500 bg-gray-900 px-2 py-0.5 rounded border border-gray-800">
+                                              {getStatusLabel(h.previousStatus || 'DRAFT')}
+                                            </span>
+                                            <span className="text-gray-600">→</span>
+                                            <span className="text-[10px] text-primary-400 font-bold bg-primary-500/10 px-2 py-0.5 rounded border border-primary-500/20">
+                                              {getStatusLabel(h.newStatus)}
+                                            </span>
+                                            <span className="text-[10px] text-gray-200 font-semibold ml-1">{actorName}</span>
+                                            <span className="text-[10px] text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded border border-yellow-500/20 uppercase font-semibold">{actorRole}</span>
+                                            <span className="text-[10px] text-gray-500 font-mono ml-auto">{new Date(h.createdAt).toLocaleString()}</span>
+                                          </div>
+                                          {h.reason && (
+                                            <p className="text-[10px] text-gray-400 italic bg-gray-900/60 px-2 py-1 rounded border border-gray-800/60">
+                                              "{h.reason}"
+                                            </p>
+                                          )}
+                                        </div>
+                                      );
+                                    })
+                                  ) : (
+                                    <p className="text-xs text-gray-500 italic py-2 text-center">No workflow history available.</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           )}

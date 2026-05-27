@@ -74,6 +74,7 @@ export interface Task {
   verifier?: TaskUser;
   team?: Team;
   module?: Module;
+  isInternal?: boolean;
   statusHistory?: StatusHistoryEntry[];
   auditLogs?: any[];
   comments?: TaskComment[];
@@ -108,6 +109,7 @@ export const createTask = async (data: {
   lifecycleStatus: number;
   plannedStartDate?: string;
   plannedEndDate?: string;
+  isInternal?: boolean;
 }): Promise<Task> => {
   const taskRes = await api.post('/tasks', data);
   return taskRes.data;

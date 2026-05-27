@@ -84,8 +84,16 @@ export function PatchCard({ task, onClick }: PatchCardProps) {
       </div>
 
       <h4 className="text-white text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary-400 transition-colors" title={task.title}>
-        {task.title || 'Untitled Patch'}
+        {task.title || 'Untitled Change'}
       </h4>
+      {/* Show Change ID */}
+      {(() => {
+        const m = task.description?.match(/\[CHANGE_ID:\s*([^\]]+)\]/);
+        const displayId = (task.id && /^\d{12}$/.test(task.id)) ? task.id : (m ? m[1] : task.id);
+        return displayId ? (
+          <div className="text-[9px] font-mono text-primary-400/70 tracking-wider">#{displayId}</div>
+        ) : null;
+      })()}
       
       <div className="flex items-center justify-between border-t border-gray-800 pt-3 mt-1">
         <div className="flex -space-x-2 overflow-hidden">

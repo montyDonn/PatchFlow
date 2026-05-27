@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import { Login } from './pages/Login';
-import { Settings } from './pages/Settings';
+
 import PatchBoardPage from './pages/PatchBoardPage';
 import ModulesPage from './pages/ModulesPage';
 import ModuleAssignmentsPage from './pages/ModuleAssignmentsPage';
@@ -59,7 +59,7 @@ function App() {
               <ReportsPage />
             </ErrorBoundary>
           } />
-          <Route path="settings" element={<Settings />} />
+
           <Route path="admin" element={
             <AdminRoute>
               <ErrorBoundary fallbackTitle="Admin Panel Error">

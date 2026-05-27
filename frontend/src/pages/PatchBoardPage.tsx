@@ -4,7 +4,7 @@ import { PatchColumn } from '../components/patches/PatchColumn';
 import { PatchDetailsModal } from '../components/patches/PatchDetailsModal';
 import { CreatePatchModal } from '../components/CreatePatchModal';
 import type { Task } from '../api/tasks';
-import { Clock, ShieldCheck, Send, PlayCircle, CheckCircle2, Search, Filter, Plus } from 'lucide-react';
+import { Clock, ShieldCheck, Send, PlayCircle, CheckCircle2, Search, Filter, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const COLUMNS = [
@@ -47,6 +47,14 @@ const COLUMNS = [
     statuses: ["COMPLETED", "REJECTED", "DELAYED", "ON_HOLD", "CANCELLED"],
     borderClass: "border-green-500",
     bgClass: "bg-green-500/10",
+  },
+  {
+    id: "DELETED",
+    title: "Deleted",
+    icon: <Trash2 size={18} className="text-red-400" />,
+    statuses: [],
+    borderClass: "border-red-500",
+    bgClass: "bg-red-500/10",
   },
 ];
 
@@ -95,8 +103,8 @@ export default function PatchBoardPage() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-white">Patch Board</h2>
-            <p className="text-sm text-gray-400 mt-1">Manage the lifecycle of all patches</p>
+            <h2 className="text-2xl font-bold tracking-tight text-white">Change Board</h2>
+            <p className="text-sm text-gray-400 mt-1">Manage the lifecycle of all changes</p>
           </div>
           {canCreatePatch && (
             <button
@@ -104,7 +112,7 @@ export default function PatchBoardPage() {
               onClick={() => setCreateOpen(true)}
               className="inline-flex items-center gap-2 rounded-2xl bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-400"
             >
-              <Plus size={16} /> Create Patch
+              <Plus size={16} /> Create Change
             </button>
           )}
         </div>
@@ -114,7 +122,7 @@ export default function PatchBoardPage() {
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               type="text"
-              placeholder="Search patches..."
+              placeholder="Search by name, ID, developer, manager, client..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-primary-500 transition-colors"
@@ -165,7 +173,17 @@ export default function PatchBoardPage() {
       <div className="flex-1 overflow-x-auto pb-4 custom-scrollbar">
         <div className="flex gap-5 min-w-max h-full items-start">
           {COLUMNS.map(col => {
-            const colTasks = tasks.filter(t => col.statuses.includes(t.status));
+            let colTasks;
+            if (col.id === "DELETED") {
+              colTasks = tasks.filter(t => t.lifecycleStatus === 100);
+            } else {
+              colTasks = tasks.filter(t => t.lifecycleStatus !== 100 && col.statuses.includes(t.status));
+            }
+
+            if (col.id === "DELETED" && !includeDeleted) {
+              return null;
+            }
+
             return (
               <PatchColumn 
                 key={col.id}

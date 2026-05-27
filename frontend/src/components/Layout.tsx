@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Settings, LogOut, Activity, Bell, Layers, Users, Share2, BarChart3, Shield } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, LogOut, Activity, Bell, Layers, Users, Share2, BarChart3, Shield } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
 import { SwitchAccountDropdown } from './layout/SwitchAccountDropdown';
@@ -19,7 +19,7 @@ function Sidebar() {
     <aside className="w-64 border-r border-gray-700/50 glass hidden md:flex flex-col h-screen sticky top-0">
       <div className="p-6 flex items-center gap-3">
         <Activity className="text-primary-500" size={28} />
-        <span className="font-bold text-xl tracking-tight">PatchFlow</span>
+        <span className="font-bold text-xl tracking-tight">Change Management</span>
       </div>
       
       <nav className="flex-1 px-4 py-6 space-y-2">
@@ -29,7 +29,7 @@ function Sidebar() {
         </Link>
         <Link to="/patches" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-700/30 hover:text-white transition-colors">
           <CheckSquare size={20} />
-          Patch Board
+          Change Board
         </Link>
         {(user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN' || user?.role === 'MANAGER' || user?.role === 'CLIENT') && (
           <Link to="/reports" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-700/30 hover:text-white transition-colors">
@@ -57,10 +57,7 @@ function Sidebar() {
             </Link>
           </>
         )}
-        <Link to="/settings" className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-700/30 hover:text-white transition-colors">
-          <Settings size={20} />
-          Settings
-        </Link>
+
       </nav>
 
       <div className="p-4 border-t border-gray-700/50">

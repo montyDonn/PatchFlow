@@ -24,6 +24,12 @@ function getUserInitial(user?: TaskUser | null): string {
   return '?';
 }
 
+const getFileUrl = (url: string): string => {
+  if (!url) return '';
+  const base = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace('/api', '');
+  return `${base}${url}`;
+};
+
 interface PatchDetailsModalProps {
   task: Task;
   onClose: () => void;
@@ -97,7 +103,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   
   const isTaskManager = task.managers?.some((m: any) => (m.id || m.userId) === currentUser?.id) || task.managerId === currentUser?.id || task.manager?.id === currentUser?.id;
   const canAssignResources = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser?.role === 'MANAGER' && isTaskManager);
-  const canEditResources = canAssignResources && (task.status === 'DRAFT' || task.status === 'ASSIGNED');
+  const canEditResources = canAssignResources && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(task.status);
   let nextStatuses = NEXT_STATUSES[task.status] || [];
   if (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') {
     // Admins see all valid transitions from the matrix, no further filtering required
@@ -350,13 +356,6 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     selectedIds: string[],
     setSelectedIds: (ids: string[]) => void
   ) => {
-    const belongsToSelectedModule = (user: TaskUser) => (
-      !task.moduleId || (user.modules || []).some((module: any) => module.id === task.moduleId || module.moduleId === task.moduleId)
-    );
-
-    const members = allUsersOfRole.filter(belongsToSelectedModule);
-    const nonMembers = allUsersOfRole.filter((u) => !belongsToSelectedModule(u));
-
     const handleToggle = (id: string) => {
       if (selectedIds.includes(id)) {
         setSelectedIds(selectedIds.filter((x) => x !== id));
@@ -368,44 +367,28 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     return (
       <div className="space-y-1.5">
         <span className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
-        <div className="max-h-28 overflow-y-auto rounded-lg border border-gray-700 bg-gray-900 p-2 space-y-1 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
-          {members.length === 0 && nonMembers.length === 0 && (
-            <div className="text-[11px] text-gray-500 p-1">No users found.</div>
-          )}
-          {members.map((user) => (
-            <label
-              key={user.id || user.userId}
-              className="flex items-center gap-2 text-xs text-white cursor-pointer hover:bg-gray-800/40 px-2 py-0.5 rounded transition-colors"
-            >
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(user.id || user.userId || '')}
-                onChange={() => handleToggle(user.id || user.userId || '')}
-                className="rounded border-gray-750 bg-gray-850 text-primary-500 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer accent-primary-500"
-              />
-              <span className="truncate">{getUserDisplayName(user)}</span>
-            </label>
-          ))}
-          {nonMembers.length > 0 && (
-            <>
-              <div className="text-[9px] font-bold uppercase tracking-wider text-gray-500 px-2 pt-1.5 pb-0.5 border-t border-gray-800 mt-1.5">
-                Non-Members (Will Auto-Assign)
-              </div>
-              {nonMembers.map((user) => (
+        <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-700 bg-gray-900 p-2 space-y-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+          {allUsersOfRole.length === 0 ? (
+            <div className="text-[11px] text-gray-500 p-1 italic">No users found. Loading...</div>
+          ) : (
+            allUsersOfRole.map((user) => {
+              const uid = user.id || user.userId || '';
+              const isChecked = selectedIds.includes(uid);
+              return (
                 <label
-                  key={user.id || user.userId}
-                  className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer hover:bg-gray-800/40 px-2 py-0.5 rounded transition-colors"
+                  key={uid}
+                  className={`flex items-center gap-2 text-xs cursor-pointer hover:bg-gray-800/60 px-2 py-1 rounded transition-colors ${isChecked ? 'text-white' : 'text-gray-400'}`}
                 >
                   <input
                     type="checkbox"
-                    checked={selectedIds.includes(user.id || user.userId || '')}
-                    onChange={() => handleToggle(user.id || user.userId || '')}
-                    className="rounded border-gray-750 bg-gray-850 text-primary-500 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer accent-primary-500"
+                    checked={isChecked}
+                    onChange={() => handleToggle(uid)}
+                    className="rounded border-gray-700 bg-gray-850 text-primary-500 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer accent-primary-500"
                   />
-                  <span className="truncate">{getUserDisplayName(user)}</span>
+                  <span className="truncate font-medium">{getUserDisplayName(user)}</span>
                 </label>
-              ))}
-            </>
+              );
+            })
           )}
         </div>
       </div>
@@ -493,19 +476,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-gray-800/30 p-5 rounded-xl border border-gray-700/30 text-sm">
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Reference No:</span>
-                  {isEditingClientFields ? (
-                    <input
-                      type="number"
-                      value={editClientRequestId}
-                      onChange={(e) => setEditClientRequestId(e.target.value)}
-                      className="w-24 bg-gray-850 border border-gray-700 rounded-md px-2 py-0.5 text-xs text-white focus:outline-none focus:border-primary-500 text-right"
-                    />
-                  ) : (
-                    <span className="text-gray-300 font-medium">{task.clientRequestId !== undefined ? task.clientRequestId : 'N/A'}</span>
-                  )}
-                </div>
+
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500">Date Given:</span>
                   <span className="text-gray-300 font-medium">{task.dateGiven ? new Date(task.dateGiven).toLocaleDateString() : 'N/A'}</span>
@@ -552,6 +523,34 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                   </>
                 )}
               </div>
+            </div>
+
+            {/* Client Attachments Section */}
+            <div className="space-y-2 text-sm text-gray-400">
+              <span className="font-semibold uppercase tracking-wider text-gray-500 text-xs">Attachments ({task.attachments?.length || 0})</span>
+              {task.attachments && task.attachments.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-800/40 p-4 rounded-xl border border-gray-700/50">
+                  {task.attachments.map((attachment: any) => {
+                    const fileUrl = getFileUrl(attachment.fileUrl);
+                    return (
+                      <a
+                        key={attachment.id}
+                        href={fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2.5 bg-gray-900/60 hover:bg-gray-900/90 border border-gray-700/50 rounded-xl p-2.5 text-xs text-gray-300 transition-all font-mono"
+                      >
+                        <FileText size={15} className="text-primary-400 shrink-0" />
+                        <span className="truncate" title={attachment.fileName}>{attachment.fileName}</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-600 italic bg-gray-850 p-4 rounded-xl border border-gray-800 text-center">
+                  No files attached.
+                </div>
+              )}
             </div>
 
             {task.status === 'DRAFT' && (
@@ -625,6 +624,17 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
               )}
             </div>
             <h2 className="text-2xl font-bold text-white">{task.title}</h2>
+            {/* Show Change ID */}
+            {(() => {
+              const idMatch = task.description?.match(/\[CHANGE_ID:\s*([^\]]+)\]/);
+              const displayId = (task.id && /^\d{12}$/.test(task.id)) ? task.id : (idMatch ? idMatch[1] : task.id);
+              if (!displayId) return null;
+              return (
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-primary-300 font-mono">
+                  <span className="text-gray-500">#</span>{displayId}
+                </div>
+              );
+            })()}
           </div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
             <X size={20} />
@@ -665,49 +675,68 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                   </div>
 
                   {/* Attachment input row */}
-                  <div className="flex gap-2 items-center bg-gray-800/40 p-2.5 rounded-lg border border-gray-700/50">
-                    <Paperclip size={14} className="text-gray-400 ml-1 shrink-0" />
-                    <input
-                      type="text"
-                      placeholder="Attach file (e.g. patch-details.patch, index.css)..."
-                      value={draftFile}
-                      onChange={(e) => setDraftFile(e.target.value)}
-                      disabled={isDeleted || updating}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddDraftFile(e);
-                        }
-                      }}
-                      className="flex-1 bg-transparent border-none text-xs text-gray-300 focus:outline-none focus:ring-0 placeholder-gray-500 font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddDraftFile}
-                      disabled={isDeleted || updating || !draftFile.trim()}
-                      className="bg-gray-700/80 hover:bg-gray-700 text-white px-2.5 py-1 rounded-md text-xs font-semibold transition-all border border-gray-600 disabled:opacity-30 disabled:hover:bg-gray-700 flex items-center gap-1 shrink-0"
-                    >
-                      <Plus size={14} />
-                      <span>Add</span>
-                    </button>
+                  <div className="flex items-center justify-between gap-3 bg-gray-800/40 p-3 rounded-lg border border-gray-700/50">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-primary-400 hover:text-primary-300 transition-colors select-none">
+                      <Paperclip size={14} className="shrink-0" />
+                      <span>Attach File (uploads instantly)</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        disabled={isDeleted || updating}
+                        onChange={async (e) => {
+                          if (e.target.files && e.target.files.length > 0) {
+                            const file = e.target.files[0];
+                            setUpdating(true);
+                            setError('');
+                            try {
+                              const formData = new FormData();
+                              formData.append('file', file);
+                              const taskRes = await api.post(`/tasks/${task.id}/attachments`, formData, {
+                                headers: {
+                                  'Content-Type': 'multipart/form-data',
+                                },
+                              });
+                              const attachments = taskRes.data.attachments || [];
+                              const latestAttachment = attachments[attachments.length - 1];
+                              if (latestAttachment) {
+                                setCommentFiles([...commentFiles, latestAttachment.fileUrl]);
+                              }
+                              if (onUpdated) {
+                                onUpdated(taskRes.data);
+                              }
+                            } catch (err: any) {
+                              setError(err?.response?.data?.error || 'Failed to upload attachment.');
+                            } finally {
+                              setUpdating(false);
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                    <span className="text-[10px] text-gray-500">PDF, patches, zip, images supported</span>
                   </div>
 
                   {/* Draft files list */}
                   {commentFiles.length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-1">
-                      {commentFiles.map((file, idx) => (
-                        <span key={idx} className="inline-flex items-center gap-1.5 bg-gray-800/80 hover:bg-gray-800 text-gray-300 text-xs px-2.5 py-1 rounded-full border border-gray-700/60 transition-all shadow-sm">
-                          <File size={12} className="text-primary-400" />
-                          <span className="font-mono">{file}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveDraftFile(file)}
-                            className="text-gray-500 hover:text-red-400 transition-colors p-0.5 rounded-full hover:bg-gray-700/50"
-                          >
-                            <X size={12} />
-                          </button>
-                        </span>
-                      ))}
+                      {commentFiles.map((fileUrl, idx) => {
+                        const fileName = fileUrl.substring(fileUrl.lastIndexOf('/') + 1).split('_')[0] + fileUrl.substring(fileUrl.lastIndexOf('.'));
+                        return (
+                          <span key={idx} className="inline-flex items-center gap-1.5 bg-gray-800/80 hover:bg-gray-800 text-gray-300 text-xs px-2.5 py-1 rounded-full border border-gray-700/60 transition-all shadow-sm">
+                            <File size={12} className="text-primary-400" />
+                            <span className="font-mono">{fileName}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCommentFiles(commentFiles.filter((f) => f !== fileUrl));
+                              }}
+                              className="text-gray-500 hover:text-red-400 transition-colors p-0.5 rounded-full hover:bg-gray-700/50"
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                 </form>
@@ -740,12 +769,22 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                           {comment.files && Array.isArray(comment.files) && comment.files.length > 0 && (
                             <div className="mt-3 pt-2.5 border-t border-gray-700/40 flex flex-wrap gap-2">
                               {comment.files.map((file: any, idx: number) => {
-                                const fileName = typeof file === 'string' ? file : (file.name || 'attachment');
+                                const isUrl = typeof file === 'string' && file.startsWith('/uploads/');
+                                const fileUrl = isUrl ? getFileUrl(file) : '#';
+                                const fileName = isUrl
+                                  ? file.substring(file.lastIndexOf('/') + 1).split('_')[0] + file.substring(file.lastIndexOf('.'))
+                                  : (typeof file === 'string' ? file : (file.name || 'attachment'));
                                 return (
-                                  <div key={idx} className="flex items-center gap-2 bg-gray-900/60 hover:bg-gray-900/95 border border-gray-700/50 rounded-lg px-3 py-1.5 text-xs text-gray-300 transition-all select-none shadow-sm hover:shadow group max-w-xs shrink-0 font-mono">
+                                  <a
+                                    key={idx}
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 bg-gray-900/60 hover:bg-gray-900/95 border border-gray-700/50 rounded-lg px-3 py-1.5 text-xs text-gray-300 transition-all select-none shadow-sm hover:shadow group max-w-xs shrink-0 font-mono"
+                                  >
                                     <FileText size={13} className="text-primary-400 group-hover:scale-105 transition-transform" />
                                     <span className="truncate" title={fileName}>{fileName}</span>
-                                  </div>
+                                  </a>
                                 );
                               })}
                             </div>
@@ -769,8 +808,8 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
             {/* Quick Actions (Update Workflow Status) */}
             {nextStatuses.length > 0 && (
               <div className="bg-gray-800/50 rounded-xl p-5 border border-gray-700/50">
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2 text-white">
-                  <CheckCircle2 size={16} /> Update Workflow
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2 text-white">
+                  <CheckCircle2 size={16} /> Move to Next Stage
                 </h3>
                 <div className="flex flex-col gap-2">
                   <select 
@@ -779,7 +818,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     disabled={updating || isDeleted}
                     className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary-500 transition-colors disabled:opacity-50"
                   >
-                    <option value="">Move to next stage</option>
+                    <option value="">Select next stage...</option>
                     {STATUSES.filter((status) => nextStatuses.includes(status.value)).map(s => (
                       <option key={s.value} value={s.value}>{s.label}</option>
                     ))}
@@ -809,6 +848,10 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                   >
                     {isEditingAssignments ? 'Save' : 'Edit'}
                   </button>
+                )}
+                {/* Always-visible Add Resource button for admins/managers not in edit mode */}
+                {canAssignResources && !isDeleted && !isEditingAssignments && ['COMPLETED', 'REJECTED', 'CANCELLED'].includes(task.status) && (
+                  <span className="text-xs text-gray-600 italic">Locked</span>
                 )}
               </div>
 
@@ -883,16 +926,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     </select>
                   </div>
 
-                  <div className="space-y-2">
-                    <span className="text-xs font-medium text-gray-400">Client Request ID / Reference No</span>
-                    <input
-                      type="number"
-                      value={editClientRequestId}
-                      onChange={(e) => setEditClientRequestId(e.target.value)}
-                      disabled={!editClientId}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors disabled:opacity-55 disabled:cursor-not-allowed"
-                    />
-                  </div>
+
                 </div>
               ) : (
                 <div className="space-y-3.5 text-sm text-gray-300">
@@ -900,10 +934,18 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     <span className="text-gray-500">Client:</span>
                     <span className="font-medium text-gray-200">{task.client ? getUserDisplayName(task.client) : 'Internal Request'}</span>
                   </div>
-                  <div className="flex justify-between items-start">
-                    <span className="text-gray-500">Reference No:</span>
-                    <span className="font-medium text-gray-200">{task.clientRequestId !== undefined ? task.clientRequestId : 'N/A'}</span>
-                  </div>
+                  {/* Show client phone if stored in description */}
+                  {(() => {
+                    const phoneMatch = task.description?.match(/\[CLIENT_PHONE:\s*([^\]]+)\]/);
+                    if (!phoneMatch) return null;
+                    return (
+                      <div className="flex justify-between items-start">
+                        <span className="text-gray-500">Client Phone:</span>
+                        <span className="font-medium text-primary-300 font-mono text-xs">{phoneMatch[1]}</span>
+                      </div>
+                    );
+                  })()}
+
                   <div>
                     <span className="text-gray-500 block mb-1">Managers:</span>
                     {task.managers && task.managers.length > 0 ? (
@@ -967,6 +1009,87 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
               </div>
             )}
             
+            {/* Attachments Section */}
+            <div className="bg-gray-800/50 rounded-xl p-5 border border-gray-700/50 text-white">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                  <Paperclip size={16} /> Attachments ({task.attachments?.length || 0})
+                </h3>
+                {/* Upload button directly in attachments panel */}
+                {!isDeleted && (
+                  <label className="text-xs font-semibold text-primary-400 hover:text-primary-300 transition-colors cursor-pointer select-none">
+                    Upload
+                    <input
+                      type="file"
+                      className="hidden"
+                      disabled={updating}
+                      onChange={async (e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          const file = e.target.files[0];
+                          setUpdating(true);
+                          setError('');
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            const taskRes = await api.post(`/tasks/${task.id}/attachments`, formData, {
+                              headers: {
+                                'Content-Type': 'multipart/form-data',
+                              },
+                            });
+                            if (onUpdated) {
+                              onUpdated(taskRes.data);
+                            }
+                          } catch (err: any) {
+                            setError(err?.response?.data?.error || 'Failed to upload attachment.');
+                          } finally {
+                            setUpdating(false);
+                          }
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {task.attachments && task.attachments.length > 0 ? (
+                <div className="space-y-2.5 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                  {task.attachments.map((attachment: any) => {
+                    const fileUrl = getFileUrl(attachment.fileUrl);
+                    const formattedSize = attachment.size
+                      ? (attachment.size > 1024 * 1024
+                        ? `${(attachment.size / (1024 * 1024)).toFixed(1)} MB`
+                        : `${(attachment.size / 1024).toFixed(0)} KB`)
+                      : 'N/A';
+                    return (
+                      <div key={attachment.id} className="bg-gray-900/60 hover:bg-gray-900/90 border border-gray-700/50 rounded-xl p-2.5 flex items-start gap-2.5 transition-all">
+                        <FileText size={16} className="text-primary-400 shrink-0 mt-0.5" />
+                        <div className="min-w-0 flex-1">
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-medium text-gray-200 hover:text-primary-300 transition-colors block truncate font-mono"
+                            title={attachment.fileName}
+                          >
+                            {attachment.fileName}
+                          </a>
+                          <div className="flex items-center gap-1.5 text-[10px] text-gray-500 mt-1">
+                            <span>{formattedSize}</span>
+                            <span>•</span>
+                            <span className="truncate" title={attachment.uploader?.name || 'Unknown'}>By {attachment.uploader?.name || 'Unknown'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-500 italic text-center py-4 border border-dashed border-gray-700 rounded-xl">
+                  No files attached yet.
+                </div>
+              )}
+            </div>
+
             <div className="bg-gray-800/50 rounded-xl p-5 border border-gray-700/50 text-white">
               <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Dates</h3>
               <div className="space-y-3">

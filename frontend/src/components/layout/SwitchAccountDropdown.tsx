@@ -3,21 +3,13 @@ import { useAuthStore } from '../../store/authStore';
 import api from '../../api/client';
 import { ChevronDown, Check, UserCircle2, Search, KeyRound } from 'lucide-react';
 
-const ACCOUNTS = [
-  { username: 'superadmin1', role: 'SUPER_ADMIN', pwd: 'Admin@123', moduleCount: 12 },
-  { username: 'admin1', role: 'ADMIN', pwd: 'Admin@123', moduleCount: 5 },
-  { username: 'manager1', role: 'MANAGER', pwd: 'Admin@123', moduleCount: 4 },
-  { username: 'developer1', role: 'DEVELOPER', pwd: 'Admin@123', moduleCount: 2 },
-  { username: 'verifier1', role: 'VERIFIER', pwd: 'Admin@123', moduleCount: 0 },
-  { username: 'client1', role: 'CLIENT', pwd: 'Admin@123', moduleCount: 0 },
-];
-
 const ROLE_GROUPS = [
   { label: 'SUPER_ADMIN / ADMIN', roles: ['SUPER_ADMIN', 'ADMIN'] },
   { label: 'MANAGERS', roles: ['MANAGER'] },
   { label: 'DEVELOPERS', roles: ['DEVELOPER'] },
   { label: 'VERIFIERS', roles: ['VERIFIER'] },
   { label: 'CLIENTS', roles: ['CLIENT'] },
+  { label: 'VIEWERS & OTHERS', roles: ['VIEWER', 'UPCL_VIEWER'] },
 ];
 
 export function SwitchAccountDropdown() {
@@ -25,12 +17,40 @@ export function SwitchAccountDropdown() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [dbAccounts, setDbAccounts] = useState<any[]>([]);
   
   const currentUser = useAuthStore(state => state.user);
   const login = useAuthStore(state => state.login);
   const logout = useAuthStore(state => state.logout);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fallback default list using the correct "upcl@123" password
+  const defaultAccounts = useMemo(() => [
+    { username: 'superadmin1', name: 'Super Admin 1', role: 'ADMIN', pwd: 'upcl@123', moduleCount: 12 },
+    { username: 'admin1', name: 'Admin 1', role: 'VIEWER', pwd: 'upcl@123', moduleCount: 5 },
+    { username: 'manager1', name: 'Manager 1', role: 'MANAGER', pwd: 'upcl@123', moduleCount: 4 },
+    { username: 'developer1', name: 'Developer 1', role: 'DEVELOPER', pwd: 'upcl@123', moduleCount: 2 },
+    { username: 'verifier1', name: 'Verifier 1', role: 'VERIFIER', pwd: 'upcl@123', moduleCount: 0 },
+    { username: 'client1', name: 'Client 1', role: 'CLIENT', pwd: 'upcl@123', moduleCount: 0 }
+  ], []);
+
+  // Fetch users dynamically from database
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get('/users');
+        if (Array.isArray(response.data)) {
+          setDbAccounts(response.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch users:', err);
+      }
+    };
+    if (currentUser) {
+      fetchUsers();
+    }
+  }, [currentUser]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -43,7 +63,20 @@ export function SwitchAccountDropdown() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSwitch = async (account: typeof ACCOUNTS[0]) => {
+  const accounts = useMemo(() => {
+    if (dbAccounts.length > 0) {
+      return dbAccounts.map(u => ({
+        username: u.username,
+        name: u.name || u.username,
+        role: u.role,
+        pwd: 'upcl@123', // Demo password for all users
+        moduleCount: u.modules?.length || 0
+      }));
+    }
+    return defaultAccounts;
+  }, [dbAccounts, defaultAccounts]);
+
+  const handleSwitch = async (account: typeof defaultAccounts[0]) => {
     if (currentUser?.username === account.username) return;
     
     setLoading(account.username);
@@ -75,11 +108,12 @@ export function SwitchAccountDropdown() {
   };
 
   const filteredAccounts = useMemo(() => {
-    return ACCOUNTS.filter(acc => 
+    return accounts.filter(acc => 
       acc.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      acc.role.toLowerCase().includes(searchQuery.toLowerCase())
+      acc.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      acc.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
-  }, [searchQuery]);
+  }, [accounts, searchQuery]);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -154,10 +188,10 @@ export function SwitchAccountDropdown() {
                           
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm font-medium truncate ${isActive ? 'text-primary-400' : ''}`}>
-                              {account.username}
+                              {account.name}
                             </p>
                             <p className="text-[10px] text-gray-500 font-mono mt-0.5 truncate">
-                              {account.role}
+                              {account.role} • {account.username}
                               {account.moduleCount > 0 && ` • ${account.moduleCount} modules`}
                             </p>
                           </div>
@@ -179,7 +213,7 @@ export function SwitchAccountDropdown() {
           {/* Footer */}
           <div className="p-3 border-t border-gray-800 bg-gray-800/40 shrink-0 flex items-center justify-center gap-2 text-xs text-gray-500">
             <KeyRound size={12} />
-            <span>Demo password: <strong className="font-mono text-gray-400">Admin@123</strong></span>
+            <span>Demo password: <strong className="font-mono text-gray-400">upcl@123</strong></span>
           </div>
         </div>
       )}

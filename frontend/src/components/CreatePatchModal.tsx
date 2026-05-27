@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { X } from 'lucide-react';
+import { X, Hash, Paperclip } from 'lucide-react';
 import api from '../api/client';
 import { createTask } from '../api/tasks';
 import type { Module, TaskUser } from '../api/tasks';
@@ -21,31 +21,78 @@ const normalizeModule = (module: any): Module => ({
   name: module.name || module.moduleName,
 });
 
+/** Generate a Change ID in yyyymmddXXXX format.
+ *  XXXX is a 4-digit counter that auto-increments per day and resets at midnight.
+ *  State persisted in localStorage under key "cm_id_counter". */
+function generateChangeId(): string {
+  const now  = new Date();
+  const yyyy = String(now.getFullYear());
+  const mm   = String(now.getMonth() + 1).padStart(2, '0');
+  const dd   = String(now.getDate()).padStart(2, '0');
+  const today = `${yyyy}${mm}${dd}`;
+
+  const LS_KEY = 'cm_id_counter';
+  let counter = 0;
+  try {
+    const stored = localStorage.getItem(LS_KEY);
+    if (stored) {
+      const { date, count } = JSON.parse(stored);
+      // Reset counter if it's a new day
+      counter = date === today ? (count + 1) : 0;
+    }
+    localStorage.setItem(LS_KEY, JSON.stringify({ date: today, count: counter }));
+  } catch {
+    // localStorage unavailable — just use 0
+  }
+
+  const seq = String(counter).padStart(4, '0');
+  return `${today}${seq}`;
+}
+
+const CHANGE_TYPES = [
+  { value: 'MODIFY', label: 'Modify' },
+  { value: 'NEW_DEVELOPMENT', label: 'New Development' },
+  { value: 'BUG_FIX', label: 'Bug Fix' },
+];
+
 export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalProps) {
   const currentUser = useAuthStore((state) => state.user);
   const isClient = currentUser?.role === 'CLIENT';
 
+  // Change ID (auto-generated on open)
+  const [changeId, setChangeId] = useState('');
+
+  // Core fields
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [clientId, setClientId] = useState('');
-  const [clientRequestId, setClientRequestId] = useState('0');
-  const [moduleId, setModuleId] = useState('');
+
+  // 3-part description
+  const [descTitle, setDescTitle]     = useState('');
+  const [descType, setDescType]       = useState('MODIFY');
+  const [descComments, setDescComments] = useState('');
+
+  // Client phone
+  const [clientPhone, setClientPhone] = useState('');
+
+  const [clientId, setClientId]           = useState('');
+  const [isInternal, setIsInternal]       = useState(false);
+  const [moduleId, setModuleId]           = useState('');
   const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
   const [selectedDeveloperIds, setSelectedDeveloperIds] = useState<string[]>([]);
   const [selectedVerifierIds, setSelectedVerifierIds] = useState<string[]>([]);
-  const [dateGiven, setDateGiven] = useState(new Date().toISOString().split('T')[0]);
+  const [dateGiven, setDateGiven]         = useState(new Date().toISOString().split('T')[0]);
   const [plannedStartDate, setPlannedStartDate] = useState('');
-  const [plannedEndDate, setPlannedEndDate] = useState('');
- 
+  const [plannedEndDate, setPlannedEndDate]     = useState('');
+  const [selectedFile, setSelectedFile]         = useState<File | null>(null);
+
   const [modules, setModules] = useState<Module[]>([]);
-  const [users, setUsers] = useState<TaskUser[]>([]);
+  const [users, setUsers]     = useState<TaskUser[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
- 
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState<string | null>(null);
+
   useEffect(() => {
     if (!open) return;
- 
+    setChangeId(generateChangeId());
     setLoading(true);
     Promise.all([api.get('/modules'), api.get('/users?includeModules=true')])
       .then(([modulesRes, usersRes]) => {
@@ -58,45 +105,64 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
       })
       .finally(() => setLoading(false));
   }, [open]);
- 
 
-  const managerUsers = users.filter((user) => user.role === 'MANAGER' || user.role === 'ADMIN' || user.role === 'SUPER_ADMIN');
-  const developerUsers = users.filter((user) => user.role === 'DEVELOPER');
-  const verifierUsers = users.filter((user) => user.role === 'VERIFIER');
-  const clientUsers = users.filter((user) => user.role === 'CLIENT');
- 
+  const managerUsers   = users.filter((u) => u.role === 'MANAGER' || u.role === 'ADMIN' || u.role === 'SUPER_ADMIN');
+  const developerUsers = users.filter((u) => u.role === 'DEVELOPER');
+  const verifierUsers  = users.filter((u) => u.role === 'VERIFIER');
+  const clientUsers    = users.filter((u) => u.role === 'CLIENT');
+
+  /** Serialize 3-part description into a single string */
+  const buildDescription = () => {
+    const typeLabel = CHANGE_TYPES.find(t => t.value === descType)?.label || descType;
+    const phonePart = clientPhone.trim() ? `\n[CLIENT_PHONE: ${clientPhone.trim()}]` : '';
+    return `[CHANGE_ID: ${changeId}] [TYPE: ${typeLabel}]\n[DESC: ${descTitle.trim()}]\n${descComments.trim()}${phonePart}`;
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
- 
-    if (!title.trim() || !description.trim()) {
-      setError('Title and description are required.');
+
+    if (!title.trim()) {
+      setError('Change name is required.');
       return;
     }
- 
+    if (!descTitle.trim()) {
+      setError('Description title is required.');
+      return;
+    }
+    if (!descComments.trim()) {
+      setError('Comments / details are required.');
+      return;
+    }
     if (!moduleId) {
       setError('Module is required.');
       return;
     }
- 
     if (selectedManagerIds.length === 0) {
-      setError('Please assign at least one Manager for this patch request.');
+      setError('Please assign at least one Manager for this change request.');
       return;
     }
- 
     if (!dateGiven) {
       setError('Date Given is required.');
       return;
     }
- 
+
+    // Validate clientPhone if provided: must be exactly 10 digits
+    if (!isInternal && (isClient || clientId) && clientPhone.trim()) {
+      if (!/^\d{10}$/.test(clientPhone.trim())) {
+        setError('Client Phone Number must be exactly 10 digits.');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
-      await createTask({
+      const taskRes = await createTask({
         title: title.trim(),
-        description: description.trim(),
+        description: buildDescription(),
         moduleId,
-        clientId: isClient ? currentUser?.id : (clientId || undefined),
-        clientRequestId: isClient || clientId ? (parseInt(clientRequestId) || 0) : 0,
+        clientId: isInternal ? undefined : (isClient ? currentUser?.id : (clientId || undefined)),
+        clientRequestId: 0,
         managerIds: selectedManagerIds,
         developerIds: selectedDeveloperIds,
         verifierIds: selectedVerifierIds,
@@ -104,12 +170,28 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
         lifecycleStatus: 0,
         plannedStartDate: plannedStartDate || undefined,
         plannedEndDate: plannedEndDate || undefined,
+        isInternal,
       });
 
+      // Upload file if selected
+      if (selectedFile && taskRes?.id) {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        await api.post(`/tasks/${taskRes.id}/attachments`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+      }
+
+      // Reset form
       setTitle('');
-      setDescription('');
+      setDescTitle('');
+      setDescType('MODIFY');
+      setDescComments('');
+      setClientPhone('');
       setClientId('');
-      setClientRequestId('0');
+      setIsInternal(false);
       setModuleId('');
       setSelectedManagerIds([]);
       setSelectedDeveloperIds([]);
@@ -117,11 +199,12 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
       setDateGiven(new Date().toISOString().split('T')[0]);
       setPlannedStartDate('');
       setPlannedEndDate('');
+      setSelectedFile(null);
       onCreated?.();
       onClose();
     } catch (err: any) {
       console.error(err);
-      setError(err?.response?.data?.error || 'Failed to create patch.');
+      setError(err?.response?.data?.error || 'Failed to create change request.');
     } finally {
       setSaving(false);
     }
@@ -172,34 +255,42 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl rounded-3xl border border-gray-700 bg-gray-950/95 p-6 shadow-2xl text-white">
+      <div className="relative w-full max-w-2xl rounded-3xl border border-gray-700 bg-gray-950/95 p-6 shadow-2xl text-white max-h-[90vh] overflow-y-auto custom-scrollbar">
         <div className="flex items-center justify-between gap-4 mb-6">
           <div>
-            <div className="text-xs uppercase tracking-[0.24em] text-primary-400/80">Create Patch</div>
-            <h2 className="mt-2 text-2xl font-semibold">New patch request</h2>
+            <div className="text-xs uppercase tracking-[0.24em] text-primary-400/80">Change Management</div>
+            <h2 className="mt-2 text-2xl font-semibold">New change request</h2>
           </div>
           <button onClick={onClose} className="rounded-full p-3 text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">
             <X size={20} />
           </button>
         </div>
 
+        {/* Change ID Badge */}
+        <div className="flex items-center gap-2 mb-5 bg-primary-500/10 border border-primary-500/20 rounded-xl px-4 py-2.5">
+          <Hash size={14} className="text-primary-400" />
+          <span className="text-xs text-gray-400 font-medium">Change ID:</span>
+          <span className="text-sm font-bold text-primary-300 font-mono tracking-widest">{changeId}</span>
+        </div>
+
         <form className="space-y-5" onSubmit={handleSubmit}>
           {error && <div className="rounded-2xl border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-200">{error}</div>}
 
+          {/* Change Name & Module */}
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-2 text-sm text-gray-400">
-              Patch Name
+              Change Name *
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
-                placeholder="Enter patch title"
+                placeholder="Enter change title"
                 required
               />
             </label>
 
             <label className="space-y-2 text-sm text-gray-400">
-              Module
+              Module *
               <select
                 value={moduleId}
                 onChange={(e) => setModuleId(e.target.value)}
@@ -214,52 +305,79 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
             </label>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {!isClient ? (
-              <label className="space-y-2 text-sm text-gray-400">
-                Client Assignment (Optional)
-                <select
-                  value={clientId}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setClientId(val);
-                    if (!val) {
-                      setClientRequestId('0');
-                    }
-                  }}
-                  className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
-                >
-                  <option value="">No Client (Internal Request)</option>
-                  {clientUsers.map((user) => (
-                    <option key={user.id || user.userId} value={user.id || user.userId}>
-                      {user.name || user.username || 'Unnamed'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
-              <div className="space-y-2 text-sm text-gray-400">
-                <span>Requesting Client</span>
-                <div className="w-full rounded-2xl border border-gray-800 bg-gray-900/50 px-4 py-3 text-gray-300">
-                  {currentUser?.name || currentUser?.username}
-                </div>
-              </div>
-            )}
-
-            <label className="space-y-2 text-sm text-gray-400">
-              Client Request ID / Reference No
-              <input
-                type="number"
-                value={clientRequestId}
-                onChange={(e) => setClientRequestId(e.target.value)}
-                disabled={!isClient && !clientId}
-                className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500 disabled:opacity-55 disabled:cursor-not-allowed"
-                placeholder="0 for internal requests"
-                required
-              />
+          {/* Internal Change Flag */}
+          <div className="flex items-center gap-3 bg-gray-950/40 p-4 rounded-xl border border-gray-800">
+            <input
+              type="checkbox"
+              id="isInternal"
+              checked={isInternal}
+              onChange={(e) => {
+                const val = e.target.checked;
+                setIsInternal(val);
+                if (val) {
+                  setClientId('');
+                  setClientPhone('');
+                }
+              }}
+              className="w-4 h-4 rounded border-gray-700 text-primary-600 bg-gray-900 focus:ring-primary-500"
+            />
+            <label htmlFor="isInternal" className="text-sm font-medium text-gray-300 cursor-pointer selection:bg-transparent select-none">
+              Internal Change Request (Restricts access to assigned resources only)
             </label>
           </div>
+ 
+          {/* Client Assignment & Phone */}
+          {!isInternal && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {!isClient ? (
+                <label className="space-y-2 text-sm text-gray-400">
+                  Client Assignment (Optional)
+                  <select
+                    value={clientId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setClientId(val);
+                      if (!val) {
+                        setClientPhone('');
+                      }
+                    }}
+                    className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                  >
+                    <option value="">No Client (Internal Request)</option>
+                    {clientUsers.map((user) => (
+                      <option key={user.id || user.userId} value={user.id || user.userId}>
+                        {user.name || user.username || 'Unnamed'}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <div className="space-y-2 text-sm text-gray-400">
+                  <span>Requesting Client</span>
+                  <div className="w-full rounded-2xl border border-gray-800 bg-gray-900/50 px-4 py-3 text-gray-300">
+                    {currentUser?.name || currentUser?.username}
+                  </div>
+                </div>
+              )}
+ 
+              <label className="space-y-2 text-sm text-gray-400">
+                Client Phone Number
+                <input
+                  type="tel"
+                  value={clientPhone}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, ''); // only allow digits
+                    if (val.length <= 10) setClientPhone(val);
+                  }}
+                  disabled={!isClient && !clientId}
+                  className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500 disabled:opacity-55 disabled:cursor-not-allowed"
+                  placeholder={isClient || clientId ? "+91 XXXXX XXXXX" : "Select a client first"}
+                />
+              </label>
+            </div>
+          )}
 
+          {/* Resource Assignments */}
           <div className="border-t border-gray-850 pt-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-primary-400 mb-3">Resource Assignments</h3>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -269,9 +387,10 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
             </div>
           </div>
 
+          {/* Dates */}
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="space-y-2 text-sm text-gray-400">
-              Date Given
+              Date Given *
               <input
                 type="date"
                 value={dateGiven}
@@ -281,7 +400,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
               />
             </label>
             <label className="space-y-2 text-sm text-gray-400">
-              Planned start date
+              Planned Start Date
               <input
                 type="date"
                 value={plannedStartDate}
@@ -290,7 +409,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
               />
             </label>
             <label className="space-y-2 text-sm text-gray-400">
-              Planned end date
+              Planned End Date
               <input
                 type="date"
                 value={plannedEndDate}
@@ -300,23 +419,87 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
             </label>
           </div>
 
-          <label className="space-y-2 text-sm text-gray-400">
-            Description
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="min-h-[120px] w-full rounded-3xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
-              placeholder="Describe the patch requirements and scope..."
-              required
-            />
-          </label>
+          {/* 3-Part Description */}
+          <div className="border-t border-gray-850 pt-4 space-y-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-primary-400">Change Description</h3>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-2 text-sm text-gray-400">
+                Description Title *
+                <input
+                  value={descTitle}
+                  onChange={(e) => setDescTitle(e.target.value)}
+                  className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                  placeholder="Short heading for this change..."
+                  required
+                />
+              </label>
+
+              <label className="space-y-2 text-sm text-gray-400">
+                Change Type *
+                <select
+                  value={descType}
+                  onChange={(e) => setDescType(e.target.value)}
+                  className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                >
+                  {CHANGE_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label className="space-y-2 text-sm text-gray-400">
+              Comments / Details *
+              <textarea
+                value={descComments}
+                onChange={(e) => setDescComments(e.target.value)}
+                className="min-h-[120px] w-full rounded-3xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                placeholder="Describe the change requirements, scope, and any additional context..."
+                required
+              />
+            </label>
+
+            <div className="space-y-2">
+              <span className="block text-sm text-gray-400 font-medium">Attach Document / File (Optional)</span>
+              <div className="flex items-center justify-between gap-3 bg-gray-900 border border-gray-700 rounded-2xl px-4 py-3">
+                <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-primary-400 hover:text-primary-300 transition-colors">
+                  <Paperclip size={16} />
+                  <span>Choose file...</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        setSelectedFile(e.target.files[0]);
+                      }
+                    }}
+                  />
+                </label>
+                {selectedFile ? (
+                  <div className="flex items-center gap-2 text-xs bg-gray-800/80 px-2.5 py-1 rounded-full border border-gray-700 max-w-[240px]">
+                    <span className="truncate text-gray-300 font-mono" title={selectedFile.name}>{selectedFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFile(null)}
+                      className="text-gray-500 hover:text-red-400 transition-colors p-0.5 rounded-full hover:bg-gray-700/50"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-500">No file selected</span>
+                )}
+              </div>
+            </div>
+          </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end mt-4">
             <button type="button" onClick={onClose} className="rounded-2xl border border-gray-700 px-5 py-3 text-sm text-gray-300 hover:bg-gray-800 transition-colors">
               Cancel
             </button>
             <button type="submit" disabled={saving || loading} className="inline-flex items-center justify-center rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-white hover:bg-primary-400 transition-colors disabled:cursor-not-allowed disabled:opacity-60">
-              {saving ? 'Creating...' : 'Create Patch Request'}
+              {saving ? 'Submitting...' : 'Submit Change Request'}
             </button>
           </div>
         </form>

@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: patchflow-api
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-old-art-abe53zun-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require&stringtype=unspecified}
+    username: ${SPRING_DATASOURCE_USERNAME:neondb_owner}
+    password: ${SPRING_DATASOURCE_PASSWORD:npg_Xm8uYBbDdV0a}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      pool-name: PatchFlowHikariCP
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      maximum-pool-size: 5
+      minimum-idle: 1
+      auto-commit: true
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:none}
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+        implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+        default_schema: public
+        globally_quoted_identifiers: true
+        default_batch_fetch_size: 16
+    show-sql: false
+    open-in-view: false
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 20MB
+      max-request-size: 25MB
+
+server:
+  port: ${PORT:8080}
+
+  error:
+    include-message: always
+    include-binding-errors: always
+
+app:
+  upload-dir: ${UPLOAD_DIR:./uploads}
+
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+logging:
+  level:
+    root: WARN
+    com.patchflow: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.results: WARN
+    org.springframework.jdbc: WARN
+    com.zaxxer.hikari: WARN
