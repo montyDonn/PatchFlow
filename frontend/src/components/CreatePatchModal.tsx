@@ -72,6 +72,9 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
 
   // Client phone
   const [clientPhone, setClientPhone] = useState('');
+  
+  // Requested Deadline (for Client)
+  const [requestedDeadline, setRequestedDeadline] = useState('');
 
   const [clientId, setClientId]           = useState('');
   const [isInternal, setIsInternal]       = useState(false);
@@ -115,7 +118,8 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
   const buildDescription = () => {
     const typeLabel = CHANGE_TYPES.find(t => t.value === descType)?.label || descType;
     const phonePart = clientPhone.trim() ? `\n[CLIENT_PHONE: ${clientPhone.trim()}]` : '';
-    return `[CHANGE_ID: ${changeId}] [TYPE: ${typeLabel}]\n[DESC: ${descTitle.trim()}]\n${descComments.trim()}${phonePart}`;
+    const deadlinePart = requestedDeadline.trim() ? `\n[CLIENT_DEADLINE: ${requestedDeadline.trim()}]` : '';
+    return `[CHANGE_ID: ${changeId}] [TYPE: ${typeLabel}]\n[DESC: ${descTitle.trim()}]\n${descComments.trim()}${phonePart}${deadlinePart}`;
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -140,6 +144,10 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
     }
     if (selectedManagerIds.length === 0) {
       setError('Please assign at least one Manager for this change request.');
+      return;
+    }
+    if (isClient && !requestedDeadline) {
+      setError('Requested Deadline is required.');
       return;
     }
     if (!dateGiven) {
@@ -199,6 +207,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
       setDateGiven(new Date().toISOString().split('T')[0]);
       setPlannedStartDate('');
       setPlannedEndDate('');
+      setRequestedDeadline('');
       setSelectedFile(null);
       onCreated?.();
       onClose();
@@ -306,25 +315,27 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
           </div>
 
           {/* Internal Change Flag */}
-          <div className="flex items-center gap-3 bg-gray-950/40 p-4 rounded-xl border border-gray-800">
-            <input
-              type="checkbox"
-              id="isInternal"
-              checked={isInternal}
-              onChange={(e) => {
-                const val = e.target.checked;
-                setIsInternal(val);
-                if (val) {
-                  setClientId('');
-                  setClientPhone('');
-                }
-              }}
-              className="w-4 h-4 rounded border-gray-700 text-primary-600 bg-gray-900 focus:ring-primary-500"
-            />
-            <label htmlFor="isInternal" className="text-sm font-medium text-gray-300 cursor-pointer selection:bg-transparent select-none">
-              Internal Change Request (Restricts access to assigned resources only)
-            </label>
-          </div>
+          {!isClient && (
+            <div className="flex items-center gap-3 bg-gray-950/40 p-4 rounded-xl border border-gray-800">
+              <input
+                type="checkbox"
+                id="isInternal"
+                checked={isInternal}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  setIsInternal(val);
+                  if (val) {
+                    setClientId('');
+                    setClientPhone('');
+                  }
+                }}
+                className="w-4 h-4 rounded border-gray-700 text-primary-600 bg-gray-900 focus:ring-primary-500"
+              />
+              <label htmlFor="isInternal" className="text-sm font-medium text-gray-300 cursor-pointer selection:bg-transparent select-none">
+                Internal Change Request (Restricts access to assigned resources only)
+              </label>
+            </div>
+          )}
  
           {/* Client Assignment & Phone */}
           {!isInternal && (
@@ -380,15 +391,15 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
           {/* Resource Assignments */}
           <div className="border-t border-gray-850 pt-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-primary-400 mb-3">Resource Assignments</h3>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className={`grid gap-4 ${isClient ? 'grid-cols-1' : 'grid-cols-3'}`}>
               {renderUserSelector('Managers *', managerUsers, selectedManagerIds, setSelectedManagerIds)}
-              {renderUserSelector('Developers', developerUsers, selectedDeveloperIds, setSelectedDeveloperIds)}
-              {renderUserSelector('Verifiers', verifierUsers, selectedVerifierIds, setSelectedVerifierIds)}
+              {!isClient && renderUserSelector('Developers', developerUsers, selectedDeveloperIds, setSelectedDeveloperIds)}
+              {!isClient && renderUserSelector('Verifiers', verifierUsers, selectedVerifierIds, setSelectedVerifierIds)}
             </div>
           </div>
 
           {/* Dates */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className={`grid gap-4 ${isClient ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
             <label className="space-y-2 text-sm text-gray-400">
               Date Given *
               <input
@@ -399,24 +410,39 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                 className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
               />
             </label>
-            <label className="space-y-2 text-sm text-gray-400">
-              Planned Start Date
-              <input
-                type="date"
-                value={plannedStartDate}
-                onChange={(e) => setPlannedStartDate(e.target.value)}
-                className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
-              />
-            </label>
-            <label className="space-y-2 text-sm text-gray-400">
-              Planned End Date
-              <input
-                type="date"
-                value={plannedEndDate}
-                onChange={(e) => setPlannedEndDate(e.target.value)}
-                className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
-              />
-            </label>
+            {isClient ? (
+              <label className="space-y-2 text-sm text-gray-400">
+                Requested Deadline *
+                <input
+                  type="date"
+                  value={requestedDeadline}
+                  onChange={(e) => setRequestedDeadline(e.target.value)}
+                  required
+                  className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                />
+              </label>
+            ) : (
+              <>
+                <label className="space-y-2 text-sm text-gray-400">
+                  Planned Start Date
+                  <input
+                    type="date"
+                    value={plannedStartDate}
+                    onChange={(e) => setPlannedStartDate(e.target.value)}
+                    className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                  />
+                </label>
+                <label className="space-y-2 text-sm text-gray-400">
+                  Planned End Date
+                  <input
+                    type="date"
+                    value={plannedEndDate}
+                    onChange={(e) => setPlannedEndDate(e.target.value)}
+                    className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                  />
+                </label>
+              </>
+            )}
           </div>
 
           {/* 3-Part Description */}

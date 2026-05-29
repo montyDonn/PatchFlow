@@ -35,7 +35,7 @@ public class TaskService {
         ALLOWED_TRANSITIONS.put("ASSIGNED",            List.of("PENDING_APPROVAL"));
         ALLOWED_TRANSITIONS.put("PENDING_APPROVAL",    List.of("IN_DEVELOPMENT"));
         ALLOWED_TRANSITIONS.put("IN_DEVELOPMENT",      List.of("VERIFYING"));
-        ALLOWED_TRANSITIONS.put("VERIFYING",           List.of("COMPLETED","RETURNED_TO_DEVELOPER","REJECTED","DELAYED","ON_HOLD","CANCELLED"));
+        ALLOWED_TRANSITIONS.put("VERIFYING",           List.of("COMPLETED","RETURNED_TO_DEVELOPER","REJECTED","ON_HOLD","CANCELLED"));
         ALLOWED_TRANSITIONS.put("RETURNED_TO_DEVELOPER", List.of("IN_DEVELOPMENT"));
         ALLOWED_TRANSITIONS.put("DELAYED",             List.of("IN_DEVELOPMENT"));
         ALLOWED_TRANSITIONS.put("ON_HOLD",             List.of("IN_DEVELOPMENT"));
@@ -161,7 +161,7 @@ public class TaskService {
                 authorized = "DEVELOPER".equals(actor.getRole()) && devIds.contains(actorId) && "IN_DEVELOPMENT".equals(previousStatus);
             }
             default -> {
-                if (List.of("COMPLETED","RETURNED_TO_DEVELOPER","REJECTED","DELAYED","ON_HOLD","CANCELLED").contains(newStatus)) {
+                if (List.of("COMPLETED","RETURNED_TO_DEVELOPER","REJECTED","ON_HOLD","CANCELLED").contains(newStatus)) {
                     List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
                     authorized = "VERIFIER".equals(actor.getRole()) && verIds.contains(actorId) && "VERIFYING".equals(previousStatus);
                 }

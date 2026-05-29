@@ -1,15 +1,105 @@
 @import "tailwindcss";
 
+:root {
+  --gray-900: #0f1115;
+  --gray-850: #121418;
+  --gray-800: #16181d;
+  --gray-750: #1c1f26;
+  --gray-700: #242830;
+  --gray-600: #4b5563;
+  --gray-500: #6b7280;
+  --gray-400: #9ca3af;
+  --gray-300: #d1d5db;
+  --gray-200: #e5e7eb;
+  --gray-100: #f3f4f6;
+  --gray-950: #08090c;
+  --white-color: #ffffff;
+}
+
+:root.light {
+  --gray-900: #f3f4f6;
+  --gray-850: #f9fafb;
+  --gray-800: #ffffff;
+  --gray-750: #f9fafb;
+  --gray-700: #e5e7eb;
+  --gray-600: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-400: #4b5563;
+  --gray-300: #374151;
+  --gray-200: #1f2937;
+  --gray-100: #111827;
+  --gray-950: #e5e7eb;
+  --white-color: #111827;
+}
+
 @theme {
-  --color-gray-900: #0f1115;
-  --color-gray-800: #16181d;
-  --color-gray-700: #242830;
+  --color-gray-900: var(--gray-900);
+  --color-gray-850: var(--gray-850);
+  --color-gray-800: var(--gray-800);
+  --color-gray-750: var(--gray-750);
+  --color-gray-700: var(--gray-700);
+  --color-gray-600: var(--gray-600);
+  --color-gray-500: var(--gray-500);
+  --color-gray-400: var(--gray-400);
+  --color-gray-300: var(--gray-300);
+  --color-gray-200: var(--gray-200);
+  --color-gray-100: var(--gray-100);
+  --color-gray-950: var(--gray-950);
+  --color-white: var(--white-color);
   --color-primary-500: #4f46e5;
   --color-primary-600: #4338ca;
   --color-accent-400: #38bdf8;
   --color-danger-500: #ef4444;
   --color-success-500: #22c55e;
   --color-warning-500: #f59e0b;
+}
+
+/* Contrast overrides for light mode elements that must stay white */
+.light .bg-primary-500,
+.light .bg-primary-500 *,
+.light .bg-primary-600,
+.light .bg-primary-600 *,
+.light .bg-red-600,
+.light .bg-red-600 *,
+.light .bg-emerald-600,
+.light .bg-emerald-600 *,
+.light .bg-primary-600\/90,
+.light .bg-primary-600\/90 *,
+.light .bg-danger-500,
+.light .bg-danger-500 *,
+.light .bg-success-500,
+.light .bg-success-500 *,
+.light .bg-warning-500,
+.light .bg-warning-500 *,
+.light .bg-slate-500,
+.light .bg-slate-500 *,
+.light .bg-blue-500,
+.light .bg-blue-500 *,
+.light .bg-amber-500,
+.light .bg-amber-500 *,
+.light .bg-purple-500,
+.light .bg-purple-500 *,
+.light .bg-indigo-500,
+.light .bg-indigo-500 *,
+.light .bg-rose-500,
+.light .bg-rose-500 *,
+.light .bg-orange-500,
+.light .bg-orange-500 *,
+.light .bg-yellow-500,
+.light .bg-yellow-500 *,
+.light .bg-gradient-to-tr,
+.light .bg-gradient-to-tr *,
+.light .bg-gray-700,
+.light .bg-gray-700 *,
+.light button[type="submit"],
+.light button[type="submit"] *,
+.light .text-white-always {
+  color: #ffffff !important;
+}
+
+.light option {
+  background-color: var(--gray-800) !important;
+  color: var(--gray-100) !important;
 }
 
 @layer base {
@@ -93,4 +183,20 @@
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+/* Request Access slide-in panel */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

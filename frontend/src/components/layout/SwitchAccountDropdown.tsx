@@ -32,7 +32,11 @@ export function SwitchAccountDropdown() {
     { username: 'manager1', name: 'Manager 1', role: 'MANAGER', pwd: 'upcl@123', moduleCount: 4 },
     { username: 'developer1', name: 'Developer 1', role: 'DEVELOPER', pwd: 'upcl@123', moduleCount: 2 },
     { username: 'verifier1', name: 'Verifier 1', role: 'VERIFIER', pwd: 'upcl@123', moduleCount: 0 },
-    { username: 'client1', name: 'Client 1', role: 'CLIENT', pwd: 'upcl@123', moduleCount: 0 }
+    { username: 'client1', name: 'Client 1', role: 'CLIENT', pwd: 'upcl@123', moduleCount: 0 },
+    { username: 'komal', name: 'Komal', role: 'CLIENT', pwd: 'upcl@123', moduleCount: 0 },
+    { username: 'abhishekrishi', name: 'AbhishekRishi', role: 'MANAGER', pwd: 'upcl@123', moduleCount: 4 },
+    { username: 'sachinp', name: 'SachinP', role: 'DEVELOPER', pwd: 'upcl@123', moduleCount: 2 },
+    { username: 'pankaj', name: 'Pankaj', role: 'VERIFIER', pwd: 'upcl@123', moduleCount: 0 },
   ], []);
 
   // Fetch users dynamically from database
@@ -123,7 +127,7 @@ export function SwitchAccountDropdown() {
         className="flex items-center gap-2 hover:bg-gray-800/50 p-1.5 pl-3 rounded-full transition-colors"
       >
         <div className="text-right hidden sm:block">
-          <p className="text-sm font-medium text-white">{currentUser?.name || currentUser?.username || 'User'}</p>
+          <p className="text-sm font-medium text-gray-100">{currentUser?.name || currentUser?.username || 'User'}</p>
           <p className="text-xs text-gray-400 capitalize">{currentUser?.role?.replace(/_/g, ' ').toLowerCase() || 'Role'}</p>
         </div>
         <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary-600 to-accent-500 flex items-center justify-center font-bold text-lg shadow-lg shadow-primary-500/20 text-white">

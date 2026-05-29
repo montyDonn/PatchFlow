@@ -238,20 +238,21 @@ All seeded demo accounts are configured with the default password: **`upcl@123`*
 | Core Profile / Designation | Username | Role Mapping | Purpose / Capabilities |
 | :--- | :--- | :--- | :--- |
 | **System Administrator** | `admin` | `ADMIN` | Full CRUD operations, user management, module deletions. |
+| **Project Manager** | `abhishek_rishi` | `MANAGER` | Approves assignment pipelines, manages development teams. |
+| **Project Manager** | `prashantp` | `MANAGER` | Approves assignment pipelines, manages development teams. |
+| **Project Manager** | `abhishiek_r` | `MANAGER` | Approves assignment pipelines, manages development teams. |
 | **Project Manager** | `manager1` | `MANAGER` | Approves assignment pipelines, manages development teams. |
-| **Project Manager** | `manager2` | `MANAGER` | Approves assignment pipelines, manages development teams. |
-| **Project Manager** | `manager3` | `MANAGER` | Approves assignment pipelines, manages development teams. |
-| **Project Manager** | `manager4` | `MANAGER` | Approves assignment pipelines, manages development teams. |
+| **Software Developer** | `siva` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
+| **Software Developer** | `trinadh` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
+| **Software Developer** | `anukriti` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
+| **Software Developer** | `sachinp` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
 | **Software Developer** | `developer1` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
-| **Software Developer** | `developer2` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
-| **Software Developer** | `developer3` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
-| **Software Developer** | `developer4` | `DEVELOPER` | Commits patches, uploads files, moves tasks to `VERIFYING`. |
+| **QA Engineer / Verifier** | `pankaj` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
+| **QA Engineer / Verifier** | `jagdish` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
+| **QA Engineer / Verifier** | `verifier` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
 | **QA Engineer / Verifier** | `verifier1` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
-| **QA Engineer / Verifier** | `verifier2` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
-| **QA Engineer / Verifier** | `verifier3` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
-| **QA Engineer / Verifier** | `verifier4` | `VERIFIER` | Tests patches, moves status to `COMPLETED` or `RETURNED`. |
+| **Client Owner** | `komal` | `CLIENT` | Submits new requests, monitors progress, downloads uploads. |
 | **Client Owner** | `client1` | `CLIENT` | Submits new requests, monitors progress, downloads uploads. |
-| **Client Owner** | `client2` | `CLIENT` | Submits new requests, monitors progress, downloads uploads. |
 | **UPCL Client Viewer** | `upclviewer1` | `UPCL_VIEWER` | Read-only observation of reports and active pipelines. |
 | **General Viewer** | `admin1` | `VIEWER` | Read-only observation of reports and active pipelines. |
 

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import api from '../api/client';
 import {
   Activity, CheckCircle, Clock, RotateCcw, FileText, UserCheck,
-  ShieldCheck, Code2, Search, Send, XCircle, PauseCircle, TimerOff,
+  ShieldCheck, Code2, Search, XCircle, PauseCircle, TimerOff,
   Ban, ArrowRight, X, Layers
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -243,7 +243,7 @@ function DonutChart({
       </svg>
       {/* Center label */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-bold text-white">{total}</span>
+        <span className="text-3xl font-bold text-gray-100">{total}</span>
         <span className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">
           {selectedStatus
             ? STAGES.find(s => s.status === selectedStatus)?.label || 'Patches'
@@ -395,7 +395,7 @@ const Dashboard = () => {
     <div className="space-y-8 animate-in fade-in duration-500 custom-scrollbar">
       {/* ── Header ──────────────────────────────────────── */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-white">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-100">
           {greeting}, {currentUser?.firstName || currentUser?.username || 'there'}
         </h1>
         <p className="text-gray-400 text-sm">
@@ -475,7 +475,7 @@ const Dashboard = () => {
         <div className="glass-card flex flex-col animate-fade-slide-up">
           {/* Header */}
           <div className="p-5 border-b border-gray-700/50 flex justify-between items-center">
-            <h2 className="text-lg font-bold text-white flex items-center gap-3">
+            <h2 className="text-lg font-bold text-gray-100 flex items-center gap-3">
               <span className={`p-1.5 rounded-lg ${selectedStageConfig.bg} ${selectedStageConfig.text}`}>
                 {selectedStageConfig.icon}
               </span>
@@ -547,7 +547,7 @@ const Dashboard = () => {
         /* Default: Recent Activity */
         <div className="glass-card flex flex-col animate-fade-slide-up">
           <div className="p-5 border-b border-gray-700/50 flex justify-between items-center">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <h2 className="text-lg font-bold text-gray-100 flex items-center gap-2">
               <Activity size={18} className="text-primary-500" />
               Recent Activity
             </h2>

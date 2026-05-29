@@ -40,16 +40,16 @@ def main():
     users = make_request("http://localhost:8080/api/users", headers=admin_headers)
     user_ids = {u["username"]: u["id"] for u in users}
     
-    client1_id = user_ids["client1"]
-    pm_id = user_ids["manager1"]
-    dev_id = user_ids["developer1"]
-    qa_id = user_ids["verifier1"]
+    komal_id = user_ids["komal"]
+    pm_id = user_ids["abhishekrishi"]
+    dev_id = user_ids["sachinp"]
+    qa_id = user_ids["pankaj"]
     
     print(f"Dynamic User IDs:")
-    print(f"  client1: {client1_id}")
-    print(f"  manager1: {pm_id}")
-    print(f"  developer1: {dev_id}")
-    print(f"  verifier1: {qa_id}")
+    print(f"  komal: {komal_id}")
+    print(f"  abhishekrishi: {pm_id}")
+    print(f"  sachinp: {dev_id}")
+    print(f"  pankaj: {qa_id}")
     
     # 3. Create Billing Module
     modules = make_request("http://localhost:8080/api/modules", headers=admin_headers)
@@ -67,7 +67,7 @@ def main():
     
     # 4. Assign users to Billing Module
     for name, uid in user_ids.items():
-        if name in ["client1", "manager1", "developer1", "verifier1"]:
+        if name in ["komal", "abhishekrishi", "sachinp", "pankaj"]:
             make_request(f"http://localhost:8080/api/users/{uid}/modules", method="PUT", headers=admin_headers, data={
                 "moduleIds": [module_id],
                 "reason": "Seeding for demo"
@@ -85,16 +85,16 @@ def main():
     })
     print("Hierarchy managers assigned.")
     
-    # 6. Login as client1 (CLIENT)
-    client1_token = login("client1", "demo123")
-    client1_headers = {"Authorization": f"Bearer {client1_token}"}
+    # 6. Login as Komal (CLIENT)
+    komal_token = login("komal", "demo123")
+    komal_headers = {"Authorization": f"Bearer {komal_token}"}
     
     # 7. Create patch
-    patch = make_request("http://localhost:8080/api/tasks", method="POST", headers=client1_headers, data={
+    patch = make_request("http://localhost:8080/api/tasks", method="POST", headers=komal_headers, data={
         "title": "Fix depreciation calculations",
         "description": "Description Title: Fix deprec calculations\nDescription Type: bug fix\nComments: Ready for pm to progress",
         "moduleId": module_id,
-        "clientId": client1_id,
+        "clientId": komal_id,
         "managerIds": [pm_id],
         "developerIds": [dev_id],
         "verifierIds": [qa_id],
@@ -106,8 +106,8 @@ def main():
     patch_id = patch["id"]
     print(f"Created Patch ID: {patch_id}, Initial Status: {patch['status']}")
     
-    # 8. Login as manager1 (MANAGER)
-    pm_token = login("manager1", "demo123")
+    # 8. Login as AbhishekRishi (MANAGER)
+    pm_token = login("abhishekrishi", "demo123")
     pm_headers = {"Authorization": f"Bearer {pm_token}"}
     
     # 9. PM moves to PENDING_APPROVAL
@@ -124,8 +124,8 @@ def main():
     })
     print(f"PM moved patch to: {p2['status']}")
     
-    # 11. Login as developer1 (DEVELOPER)
-    dev_token = login("developer1", "demo123")
+    # 11. Login as SachinP (DEVELOPER)
+    dev_token = login("sachinp", "demo123")
     dev_headers = {"Authorization": f"Bearer {dev_token}"}
     
     # 12. Dev moves to VERIFYING
@@ -135,8 +135,8 @@ def main():
     })
     print(f"Dev moved patch to: {p3['status']}")
     
-    # 13. Login as verifier1 (VERIFIER)
-    qa_token = login("verifier1", "demo123")
+    # 13. Login as Pankaj (VERIFIER)
+    qa_token = login("pankaj", "demo123")
     qa_headers = {"Authorization": f"Bearer {qa_token}"}
     
     # 14. QA moves to COMPLETED

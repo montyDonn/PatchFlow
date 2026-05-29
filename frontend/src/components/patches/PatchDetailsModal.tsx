@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, MessageSquare, CalendarDays, CheckCircle2, Trash2, RotateCcw, Users, Paperclip, Plus, FileText, File } from 'lucide-react';
+import { X, Clock, MessageSquare, CalendarDays, CheckCircle2, Trash2, RotateCcw, Users, Paperclip, FileText, File } from 'lucide-react';
 import type { Task, TaskUser } from '../../api/tasks';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../api/client';
@@ -28,6 +28,11 @@ const getFileUrl = (url: string): string => {
   if (!url) return '';
   const base = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace('/api', '');
   return `${base}${url}`;
+};
+
+const getClientDeadline = (description: string) => {
+  const match = description?.match(/\[CLIENT_DEADLINE:\s*([^\]]+)\]/);
+  return match ? match[1] : null;
 };
 
 interface PatchDetailsModalProps {
@@ -72,7 +77,6 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   const [updating, setUpdating] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [commentFiles, setCommentFiles] = useState<string[]>([]);
-  const [draftFile, setDraftFile] = useState('');
   const [error, setError] = useState('');
   const currentUser = useAuthStore((state) => state.user);
 
@@ -83,6 +87,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   const [selectedVerIds, setSelectedVerIds] = useState<string[]>([]);
   const [isEditingAssignments, setIsEditingAssignments] = useState(false);
   const [editDateStarted, setEditDateStarted] = useState('');
+  const [editPlannedEndDate, setEditPlannedEndDate] = useState('');
   const [editStatus, setEditStatus] = useState('');
   const [activeTab, setActiveTab] = useState<'timeline' | 'audit'>('timeline');
 
@@ -123,7 +128,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   } else if (currentUser?.role === 'VERIFIER') {
     nextStatuses = nextStatuses.filter(status => 
       (task.status === 'VERIFYING' && [
-        'COMPLETED', 'RETURNED_TO_DEVELOPER', 'REJECTED', 'DELAYED', 'ON_HOLD', 'CANCELLED'
+        'COMPLETED', 'RETURNED_TO_DEVELOPER', 'REJECTED', 'ON_HOLD', 'CANCELLED'
       ].includes(status))
     );
   } else {
@@ -150,6 +155,11 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
       setEditDateStarted(task.dateStarted.split('T')[0]);
     } else {
       setEditDateStarted('');
+    }
+    if (task.plannedEndDate) {
+      setEditPlannedEndDate(task.plannedEndDate.split('T')[0]);
+    } else {
+      setEditPlannedEndDate('');
     }
     setEditStatus(task.status);
 
@@ -197,19 +207,6 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     } finally {
       setUpdating(false);
     }
-  };
-
-  const handleAddDraftFile = (e: React.MouseEvent | React.FormEvent | React.KeyboardEvent) => {
-    e.preventDefault();
-    const file = draftFile.trim();
-    if (file && !commentFiles.includes(file)) {
-      setCommentFiles([...commentFiles, file]);
-      setDraftFile('');
-    }
-  };
-
-  const handleRemoveDraftFile = (fileToRemove: string) => {
-    setCommentFiles(commentFiles.filter((f) => f !== fileToRemove));
   };
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
@@ -280,6 +277,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
         verifierIds: selectedVerIds,
         status: editStatus,
         dateStarted: editDateStarted || undefined,
+        plannedEndDate: editPlannedEndDate || undefined,
         clientId: editClientId ? editClientId : undefined,
         clientRequestId: editClientId ? (parseInt(editClientRequestId) || 0) : 0,
         reason: reason || undefined,
@@ -299,6 +297,11 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
         setEditDateStarted(updated.dateStarted.split('T')[0]);
       } else {
         setEditDateStarted('');
+      }
+      if (updated.plannedEndDate) {
+        setEditPlannedEndDate(updated.plannedEndDate.split('T')[0]);
+      } else {
+        setEditPlannedEndDate('');
       }
       setEditStatus(updated.status);
       setIsEditingAssignments(false);
@@ -488,6 +491,20 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500">Date Ended:</span>
                   <span className="text-gray-300 font-medium">{task.dateEnded ? new Date(task.dateEnded).toLocaleDateString() : 'In progress'}</span>
+                </div>
+                {getClientDeadline(task.description) && (
+                  <div className="flex justify-between items-center border-t border-gray-700/30 pt-2 mt-2">
+                    <span className="text-gray-500 font-semibold text-primary-400">Requested Deadline:</span>
+                    <span className="text-primary-300 font-medium font-mono">{new Date(getClientDeadline(task.description)!).toLocaleDateString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 font-semibold text-primary-400">Approved Deadline:</span>
+                  {task.plannedEndDate ? (
+                    <span className="text-emerald-400 font-medium font-mono">{new Date(task.plannedEndDate).toLocaleDateString()}</span>
+                  ) : (
+                    <span className="text-amber-400 font-medium italic">Pending Manager Approval</span>
+                  )}
                 </div>
               </div>
 
@@ -880,6 +897,16 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <span className="text-xs font-medium text-gray-400">Approved Deadline</span>
+                    <input
+                      type="date"
+                      value={editPlannedEndDate}
+                      onChange={(e) => setEditPlannedEndDate(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+
                   {renderUserSelector(
                     'Managers *',
                     usersList.filter(u => u.role === 'MANAGER' || u.role === 'ADMIN' || u.role === 'SUPER_ADMIN'),
@@ -1104,6 +1131,20 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-500 flex items-center gap-1"><CheckCircle2 size={14}/> Ended</span>
                   <span className="text-gray-300">{task.dateEnded ? new Date(task.dateEnded).toLocaleDateString() : 'In progress'}</span>
+                </div>
+                {getClientDeadline(task.description) && (
+                  <div className="flex justify-between items-center text-sm border-t border-gray-700/30 pt-2 mt-2">
+                    <span className="text-gray-500 flex items-center gap-1 font-semibold"><Clock size={14}/> Requested Deadline</span>
+                    <span className="text-primary-300 font-medium font-mono">{new Date(getClientDeadline(task.description)!).toLocaleDateString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500 flex items-center gap-1 font-semibold"><CheckCircle2 size={14}/> Approved Deadline</span>
+                  {task.plannedEndDate ? (
+                    <span className="text-emerald-400 font-medium font-mono">{new Date(task.plannedEndDate).toLocaleDateString()}</span>
+                  ) : (
+                    <span className="text-amber-400 font-medium italic">Pending Approval</span>
+                  )}
                 </div>
               </div>
             </div>
