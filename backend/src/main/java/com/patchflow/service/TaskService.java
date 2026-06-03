@@ -27,21 +27,21 @@ public class TaskService {
 
     // ── Constants ────────────────────────────────────────────────────────────
 
-    private static final Set<String> ADMIN_ROLES = Set.of("ADMIN");
+    private static final Set<String> ADMIN_ROLES = Set.of("ADMIN", "SUPER_ADMIN");
 
     private static final Map<String, List<String>> ALLOWED_TRANSITIONS = new HashMap<>();
     static {
-        ALLOWED_TRANSITIONS.put("DRAFT",               List.of("ASSIGNED"));
-        ALLOWED_TRANSITIONS.put("ASSIGNED",            List.of("PENDING_APPROVAL"));
-        ALLOWED_TRANSITIONS.put("PENDING_APPROVAL",    List.of("IN_DEVELOPMENT"));
-        ALLOWED_TRANSITIONS.put("IN_DEVELOPMENT",      List.of("VERIFYING"));
-        ALLOWED_TRANSITIONS.put("VERIFYING",           List.of("COMPLETED","RETURNED_TO_DEVELOPER","REJECTED","ON_HOLD","CANCELLED"));
+        ALLOWED_TRANSITIONS.put("DRAFT",               List.of("PENDING_APPROVAL"));
+        ALLOWED_TRANSITIONS.put("PENDING_APPROVAL",     List.of("ASSIGNED"));
+        ALLOWED_TRANSITIONS.put("ASSIGNED",             List.of("IN_DEVELOPMENT"));
+        ALLOWED_TRANSITIONS.put("IN_DEVELOPMENT",       List.of("VERIFYING"));
+        ALLOWED_TRANSITIONS.put("VERIFYING",            List.of("COMPLETED","RETURNED_TO_DEVELOPER","REJECTED","ON_HOLD","CANCELLED"));
         ALLOWED_TRANSITIONS.put("RETURNED_TO_DEVELOPER", List.of("IN_DEVELOPMENT"));
-        ALLOWED_TRANSITIONS.put("DELAYED",             List.of("IN_DEVELOPMENT"));
-        ALLOWED_TRANSITIONS.put("ON_HOLD",             List.of("IN_DEVELOPMENT"));
-        ALLOWED_TRANSITIONS.put("COMPLETED",           List.of());
-        ALLOWED_TRANSITIONS.put("REJECTED",            List.of());
-        ALLOWED_TRANSITIONS.put("CANCELLED",           List.of());
+        ALLOWED_TRANSITIONS.put("DELAYED",              List.of("IN_DEVELOPMENT"));
+        ALLOWED_TRANSITIONS.put("ON_HOLD",              List.of("IN_DEVELOPMENT"));
+        ALLOWED_TRANSITIONS.put("COMPLETED",            List.of());
+        ALLOWED_TRANSITIONS.put("REJECTED",             List.of());
+        ALLOWED_TRANSITIONS.put("CANCELLED",            List.of());
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -128,31 +128,24 @@ public class TaskService {
         boolean authorized = false;
 
         switch (newStatus) {
-            case "ASSIGNED" -> {
+            case "PENDING_APPROVAL" -> {
                 boolean clientOrAuthor = ("CLIENT".equals(actor.getRole()) &&
                         (actorId.equals(task.getClientId()) || actorId.equals(task.getAuthorId()))) ||
                         (task.getClientId() == null && (actorId.equals(task.getAuthorId()) || isTaskManager));
                 authorized = clientOrAuthor && "DRAFT".equals(previousStatus);
             }
-            case "PENDING_APPROVAL" -> {
-                authorized = ("MANAGER".equals(actor.getRole()) || isAdmin(actor.getRole())) && "ASSIGNED".equals(previousStatus);
+            case "ASSIGNED" -> {
+                authorized = "MANAGER".equals(actor.getRole()) && isTaskManager && "PENDING_APPROVAL".equals(previousStatus);
             }
             case "IN_DEVELOPMENT" -> {
-                if ("PENDING_APPROVAL".equals(previousStatus) && "MANAGER".equals(actor.getRole())) {
-                    List<String> teamIds = getTeamUserIds(actorId);
-                    List<String> devIds  = task.getDevelopers().stream().map(User::getUserId).toList();
-                    List<String> verIds  = task.getVerifiers().stream().map(User::getUserId).toList();
-                    boolean isTeamMgr = devIds.stream().anyMatch(teamIds::contains) || verIds.stream().anyMatch(teamIds::contains);
-                    authorized = isTaskManager || isTeamMgr;
+                if ("ASSIGNED".equals(previousStatus) && "MANAGER".equals(actor.getRole())) {
+                    List<String> devIds = task.getDevelopers().stream().map(User::getUserId).toList();
+                    List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
+                    authorized = isTaskManager && !devIds.isEmpty() && !verIds.isEmpty();
                 } else if (List.of("RETURNED_TO_DEVELOPER","DELAYED","ON_HOLD").contains(previousStatus)) {
                     List<String> devIds = task.getDevelopers().stream().map(User::getUserId).toList();
                     boolean isDev = "DEVELOPER".equals(actor.getRole()) && devIds.contains(actorId);
-                    boolean isMgr = false;
-                    if ("MANAGER".equals(actor.getRole())) {
-                        List<String> teamIds = getTeamUserIds(actorId);
-                        List<String> verIds  = task.getVerifiers().stream().map(User::getUserId).toList();
-                        isMgr = (isTaskManager || devIds.stream().anyMatch(teamIds::contains) || verIds.stream().anyMatch(teamIds::contains));
-                    }
+                    boolean isMgr = "MANAGER".equals(actor.getRole()) && isTaskManager;
                     authorized = isDev || isMgr;
                 }
             }
@@ -274,6 +267,17 @@ public class TaskService {
         if (!isAdmin(actor.getRole()) && !Set.of("CLIENT","MANAGER","DEVELOPER").contains(actor.getRole())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only ADMIN, CLIENT, MANAGER, and DEVELOPER can create patches");
         }
+        if ("CLIENT".equals(actor.getRole())) {
+            if (plannedEndDate != null && !plannedEndDate.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clients cannot set deadlines");
+            }
+            if (plannedStartDate != null && !plannedStartDate.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clients cannot set start dates");
+            }
+            if ((developerIds != null && !developerIds.isEmpty()) || (verifierIds != null && !verifierIds.isEmpty())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clients can only assign managers, not other resources");
+            }
+        }
         assertModule(moduleId);
 
         String resolvedClientId = "CLIENT".equals(actor.getRole()) ? actor.getUserId() : clientId;
@@ -330,6 +334,18 @@ public class TaskService {
                 .taskId(task.getId()).changedBy(authorId).fieldChanged("Task Created")
                 .newValue("{\"id\":\"" + task.getId() + "\",\"title\":\"" + title + "\",\"status\":\"" + initialStatus + "\"}")
                 .reason("Task created by author").build());
+
+        // Notifications on creation
+        final Task finalTask = task;
+        task.getManagers().forEach(m -> 
+            notificationService.createNotification(m.getUserId(), "TASK_ASSIGNED", 
+                "You have been assigned as Manager for patch: \"" + finalTask.getTitle() + "\""));
+        task.getDevelopers().forEach(d -> 
+            notificationService.createNotification(d.getUserId(), "TASK_ASSIGNED", 
+                "You have been assigned as Developer for patch: \"" + finalTask.getTitle() + "\""));
+        task.getVerifiers().forEach(v -> 
+            notificationService.createNotification(v.getUserId(), "TASK_ASSIGNED", 
+                "You have been assigned as Verifier for patch: \"" + finalTask.getTitle() + "\""));
 
         return getTaskById(task.getId());
     }
@@ -472,18 +488,43 @@ public class TaskService {
     private void sendStatusNotifications(Task task, String newStatus, String actorId) {
         try {
             switch (newStatus) {
-                case "ASSIGNED" -> task.getManagers().forEach(m ->
-                    notificationService.createNotification(m.getUserId(), "TASK_ASSIGNED", "Task \"" + task.getTitle() + "\" has been assigned to you by Client."));
                 case "PENDING_APPROVAL" -> task.getManagers().forEach(m ->
-                    notificationService.createNotification(m.getUserId(), "TASK_PENDING_APPROVAL", "Task \"" + task.getTitle() + "\" assignments ready for approval."));
+                    notificationService.createNotification(m.getUserId(), "TASK_PENDING_APPROVAL", "Patch \"" + task.getTitle() + "\" is pending your review and approval."));
+                case "ASSIGNED" -> {
+                    task.getDevelopers().forEach(d ->
+                        notificationService.createNotification(d.getUserId(), "TASK_ASSIGNED", "You have been assigned as Developer for patch: \"" + task.getTitle() + "\""));
+                    task.getVerifiers().forEach(v ->
+                        notificationService.createNotification(v.getUserId(), "TASK_ASSIGNED", "You have been assigned as Verifier for patch: \"" + task.getTitle() + "\""));
+                    if (task.getClientId() != null) {
+                        notificationService.createNotification(task.getClientId(), "TASK_ASSIGNED", "Your patch request \"" + task.getTitle() + "\" has been approved and assigned.");
+                    }
+                }
                 case "IN_DEVELOPMENT" -> task.getDevelopers().forEach(d ->
                     notificationService.createNotification(d.getUserId(), "TASK_IN_DEVELOPMENT", "Work has started on your task: \"" + task.getTitle() + "\"."));
                 case "VERIFYING" -> task.getVerifiers().forEach(v ->
                     notificationService.createNotification(v.getUserId(), "TASK_PENDING_VERIFICATION", "Task \"" + task.getTitle() + "\" is ready for verification."));
                 case "RETURNED_TO_DEVELOPER" -> task.getDevelopers().forEach(d ->
                     notificationService.createNotification(d.getUserId(), "TASK_RETURNED", "Task \"" + task.getTitle() + "\" failed verification and has been returned to you for rework."));
+                case "COMPLETED" -> {
+                    String msg = "Task \"" + task.getTitle() + "\" has been successfully verified and completed.";
+                    task.getManagers().forEach(m -> notificationService.createNotification(m.getUserId(), "TASK_COMPLETED", msg));
+                    task.getDevelopers().forEach(d -> notificationService.createNotification(d.getUserId(), "TASK_COMPLETED", msg));
+                    task.getVerifiers().forEach(v -> notificationService.createNotification(v.getUserId(), "TASK_COMPLETED", msg));
+                    if (task.getClientId() != null) {
+                        notificationService.createNotification(task.getClientId(), "TASK_FINALIZED", "Your patch request \"" + task.getTitle() + "\" has been verified and completed.");
+                    }
+                }
+                case "DELAYED" -> {
+                    String msg = "Task \"" + task.getTitle() + "\" has been delayed.";
+                    task.getManagers().forEach(m -> notificationService.createNotification(m.getUserId(), "TASK_DELAYED", msg));
+                    task.getDevelopers().forEach(d -> notificationService.createNotification(d.getUserId(), "TASK_DELAYED", msg));
+                    task.getVerifiers().forEach(v -> notificationService.createNotification(v.getUserId(), "TASK_DELAYED", msg));
+                    if (task.getClientId() != null) {
+                        notificationService.createNotification(task.getClientId(), "TASK_DELAYED", "Your patch request \"" + task.getTitle() + "\" has been delayed.");
+                    }
+                }
                 default -> {
-                    if (task.getClientId() != null && List.of("COMPLETED","REJECTED","CANCELLED","DELAYED","ON_HOLD").contains(newStatus)) {
+                    if (task.getClientId() != null && List.of("REJECTED","CANCELLED","ON_HOLD").contains(newStatus)) {
                         notificationService.createNotification(task.getClientId(), "TASK_FINALIZED", "Your patch request \"" + task.getTitle() + "\" status has been updated to " + newStatus + ".");
                     }
                 }
@@ -571,7 +612,7 @@ public class TaskService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
         User actor = getActor(actorId);
         List<String> managerIds = task.getManagers().stream().map(User::getUserId).toList();
-        if (!isAdmin(actor.getRole()) && !managerIds.contains(actorId)) {
+        if (!isAdmin(actor.getRole()) && !"MANAGER".equals(actor.getRole()) && !managerIds.contains(actorId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden");
         }
         User assignee = userRepository.findById(assigneeId)
@@ -590,18 +631,49 @@ public class TaskService {
     @Transactional
     public Map<String, Object> updateTaskDetails(String taskId, Map<String, Object> data, String actorId) {
         User actor = getActor(actorId);
-        if ("VIEWER".equals(actor.getRole()) || "UPCL_VIEWER".equals(actor.getRole())) {
+        String role = actor.getRole();
+        if ("VIEWER".equals(role) || "UPCL_VIEWER".equals(role)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: Viewers cannot edit patches");
         }
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
 
-        if ("CLIENT".equals(actor.getRole())) {
-            if (!actorId.equals(task.getClientId()) && !actorId.equals(task.getAuthorId()))
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: You do not own this patch");
-            if (!"DRAFT".equals(task.getStatus()))
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: Cannot edit patches after submission");
+        boolean isAdmin = "ADMIN".equals(role) || "SUPER_ADMIN".equals(role);
+        if (!isAdmin) {
+            if ("CLIENT".equals(role)) {
+                if (!actorId.equals(task.getClientId()) && !actorId.equals(task.getAuthorId()))
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: You do not own this patch");
+                if (!"DRAFT".equals(task.getStatus()))
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: Cannot edit patches after submission");
+                if (data.containsKey("plannedEndDate")) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clients cannot set deadlines");
+                }
+                if (data.containsKey("plannedStartDate")) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clients cannot set start dates");
+                }
+                if (data.containsKey("developerIds") || data.containsKey("developers") ||
+                    data.containsKey("verifierIds") || data.containsKey("verifiers")) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clients can only assign managers, not other resources");
+                }
+            } else if ("MANAGER".equals(role)) {
+                boolean isAssignedManager = task.getManagers().stream()
+                        .anyMatch(m -> m.getUserId().equals(actorId));
+                if (!isAssignedManager) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: You are not assigned to this patch");
+                }
+            } else {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Forbidden: Only admins and assigned managers can edit patch details");
+            }
         }
+
+        // Capture previous state
+        Set<String> prevManagers = task.getManagers().stream().map(User::getUserId).collect(Collectors.toSet());
+        Set<String> prevDevelopers = task.getDevelopers().stream().map(User::getUserId).collect(Collectors.toSet());
+        Set<String> prevVerifiers = task.getVerifiers().stream().map(User::getUserId).collect(Collectors.toSet());
+        String prevTitle = task.getTitle();
+        String prevDescription = task.getDescription();
+        String prevModuleId = task.getModuleId();
+        Instant prevPlannedEndDate = task.getPlannedEndDate();
 
         String oldStatus = task.getStatus();
 
@@ -632,13 +704,7 @@ public class TaskService {
             task.setVerifiers(new ArrayList<>(userRepository.findAllById(ids)));
         }
 
-        // auto-assign
         String newStatus = (String) data.get("status");
-        if ("DRAFT".equals(oldStatus) && (newStatus == null || !"ASSIGNED".equals(newStatus))) {
-            if (!task.getManagers().isEmpty() && !task.getDevelopers().isEmpty() && !task.getVerifiers().isEmpty()) {
-                newStatus = "ASSIGNED";
-            }
-        }
         if (newStatus != null && !newStatus.equals(oldStatus)) {
             validateStatusTransition(task, actor, newStatus);
             task.setStatus(newStatus);
@@ -652,7 +718,64 @@ public class TaskService {
                     .reason((String) data.getOrDefault("reason", "Status changed from " + oldStatus + " to " + newStatus)).build());
         }
 
-        taskRepository.save(task);
+        task = taskRepository.save(task);
+
+        // Fetch new states
+        Set<String> newManagers = task.getManagers().stream().map(User::getUserId).collect(Collectors.toSet());
+        Set<String> newDevelopers = task.getDevelopers().stream().map(User::getUserId).collect(Collectors.toSet());
+        Set<String> newVerifiers = task.getVerifiers().stream().map(User::getUserId).collect(Collectors.toSet());
+
+        // 1. Notify newly assigned resources
+        final Task finalTask1 = task;
+        newManagers.stream().filter(id -> !prevManagers.contains(id)).forEach(id -> {
+            notificationService.createNotification(id, "TASK_ASSIGNED", 
+                "You have been assigned as Manager for patch: \"" + finalTask1.getTitle() + "\"");
+        });
+        newDevelopers.stream().filter(id -> !prevDevelopers.contains(id)).forEach(id -> {
+            notificationService.createNotification(id, "TASK_ASSIGNED", 
+                "You have been assigned as Developer for patch: \"" + finalTask1.getTitle() + "\"");
+        });
+        newVerifiers.stream().filter(id -> !prevVerifiers.contains(id)).forEach(id -> {
+            notificationService.createNotification(id, "TASK_ASSIGNED", 
+                "You have been assigned as Verifier for patch: \"" + finalTask1.getTitle() + "\"");
+        });
+
+        // 2. Notify on field changes (title, description, module)
+        boolean fieldsChanged = false;
+        if (!Objects.equals(prevTitle, task.getTitle())) fieldsChanged = true;
+        if (!Objects.equals(prevDescription, task.getDescription())) fieldsChanged = true;
+        if (!Objects.equals(prevModuleId, task.getModuleId())) fieldsChanged = true;
+
+        if (fieldsChanged) {
+            String updateMsg = "Task \"" + task.getTitle() + "\" details have been updated.";
+            task.getManagers().forEach(m -> notificationService.createNotification(m.getUserId(), "TASK_UPDATED", updateMsg));
+            task.getDevelopers().forEach(d -> notificationService.createNotification(d.getUserId(), "TASK_UPDATED", updateMsg));
+            task.getVerifiers().forEach(v -> notificationService.createNotification(v.getUserId(), "TASK_UPDATED", updateMsg));
+            if (task.getClientId() != null) {
+                notificationService.createNotification(task.getClientId(), "TASK_UPDATED", updateMsg);
+            }
+        }
+
+        // 3. Notify on deadline changes
+        if (data.containsKey("plannedEndDate")) {
+            Instant newPlannedEndDate = task.getPlannedEndDate();
+            if (!Objects.equals(prevPlannedEndDate, newPlannedEndDate) && newPlannedEndDate != null) {
+                String deadlineMsg = "A new deadline has been set for task \"" + task.getTitle() + "\": " + 
+                    java.time.format.DateTimeFormatter.ISO_LOCAL_DATE.withZone(java.time.ZoneOffset.UTC).format(newPlannedEndDate);
+                task.getManagers().forEach(m -> notificationService.createNotification(m.getUserId(), "DEADLINE_UPDATED", deadlineMsg));
+                task.getDevelopers().forEach(d -> notificationService.createNotification(d.getUserId(), "DEADLINE_UPDATED", deadlineMsg));
+                task.getVerifiers().forEach(v -> notificationService.createNotification(v.getUserId(), "DEADLINE_UPDATED", deadlineMsg));
+                if (task.getClientId() != null) {
+                    notificationService.createNotification(task.getClientId(), "DEADLINE_UPDATED", deadlineMsg);
+                }
+            }
+        }
+
+        // 4. Notify on status changes
+        if (newStatus != null && !newStatus.equals(oldStatus)) {
+            sendStatusNotifications(task, newStatus, actorId);
+        }
+
         return getTaskById(taskId);
     }
 

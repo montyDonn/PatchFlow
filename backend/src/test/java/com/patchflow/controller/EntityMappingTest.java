@@ -53,8 +53,6 @@ class EntityMappingTest {
                 entity,
                 String.class
         );
-        System.out.println("Users Response Status: " + usersResponse.getStatusCode());
-        System.out.println("Users Response Body: " + usersResponse.getBody());
         assertThat(usersResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
 
         // 3. Fetch modules
@@ -64,8 +62,6 @@ class EntityMappingTest {
                 entity,
                 String.class
         );
-        System.out.println("Modules Response Status: " + modulesResponse.getStatusCode());
-        System.out.println("Modules Response Body: " + modulesResponse.getBody());
         assertThat(modulesResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 }

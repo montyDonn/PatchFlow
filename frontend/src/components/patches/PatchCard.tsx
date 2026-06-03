@@ -94,6 +94,15 @@ export function PatchCard({ task, onClick }: PatchCardProps) {
           <div className="text-[9px] font-mono text-primary-400/70 tracking-wider">#{displayId}</div>
         ) : null;
       })()}
+
+      {task.plannedEndDate && (
+        <div className={`text-[10px] font-semibold flex items-center gap-1.5 px-2 py-0.5 rounded bg-gray-950/40 border border-gray-800 self-start ${
+          new Date(task.plannedEndDate).getTime() < Date.now() ? 'text-rose-400 border-rose-900/30' : 'text-amber-400 border-amber-900/30'
+        }`}>
+          <Clock size={10} className="shrink-0" />
+          <span>Deadline: {new Date(task.plannedEndDate).toLocaleDateString()}</span>
+        </div>
+      )}
       
       <div className="flex items-center justify-between border-t border-gray-800 pt-3 mt-1">
         <div className="flex -space-x-2 overflow-hidden">

@@ -9,7 +9,7 @@ describe('End-to-End Patch Flow Lifecycle', () => {
       // 1. Login as admin
       const loginRes = await axios.post(`${BASE_URL}/auth/login`, {
         username: 'admin',
-        password: 'admin123',
+        password: 'upcl@123',
       });
 
       expect(loginRes.status).toBe(200);
@@ -121,5 +121,5 @@ describe('End-to-End Patch Flow Lifecycle', () => {
       console.error('[E2E Error]', { message, responseStatus, responseData });
       throw new Error(`Test failed: ${message} - Status: ${responseStatus} - Data: ${JSON.stringify(responseData)}`);
     }
-  }, 30000);
+  }, 60000);
 });

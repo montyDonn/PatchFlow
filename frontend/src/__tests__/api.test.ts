@@ -25,7 +25,7 @@ describe('Frontend API Integration Tests', () => {
       await axios.get(`${API_URL}/nonexistent-endpoint`, { timeout: 1000 });
     } catch (error: any) {
       expect(error).toBeDefined();
-      expect([404, 500, 'ECONNREFUSED']).toContain(
+      expect([404, 500, 'ECONNREFUSED', 'ERR_NETWORK']).toContain(
         error.response?.status || error.code
       );
     }

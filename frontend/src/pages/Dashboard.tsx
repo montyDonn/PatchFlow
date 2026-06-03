@@ -17,6 +17,12 @@ interface DashboardTask {
   module?: { name: string };
   assignee?: { name?: string; firstName?: string; lastName?: string; username?: string };
   createdAt: string;
+  plannedEndDate?: string;
+  client?: { name?: string; firstName?: string; lastName?: string; username?: string };
+  manager?: { name?: string; firstName?: string; lastName?: string; username?: string };
+  managers?: Array<{ name?: string; firstName?: string; lastName?: string; username?: string }>;
+  developers?: Array<{ name?: string; firstName?: string; lastName?: string; username?: string }>;
+  verifiers?: Array<{ name?: string; firstName?: string; lastName?: string; username?: string }>;
 }
 
 /** Safely get display name for a task's assignee */
@@ -57,18 +63,6 @@ const STAGES: {
     chartColor: '#94a3b8',
   },
   {
-    status: 'ASSIGNED',
-    label: 'Assigned',
-    icon: <UserCheck size={18} />,
-    gradient: 'from-blue-500 to-blue-600',
-    ring: 'ring-blue-400/40',
-    bg: 'bg-blue-500/10',
-    text: 'text-blue-400',
-    border: 'border-blue-500/30',
-    glow: 'shadow-blue-500/20',
-    chartColor: '#60a5fa',
-  },
-  {
     status: 'PENDING_APPROVAL',
     label: 'Pending Approval',
     icon: <ShieldCheck size={18} />,
@@ -79,6 +73,18 @@ const STAGES: {
     border: 'border-amber-500/30',
     glow: 'shadow-amber-500/20',
     chartColor: '#fbbf24',
+  },
+  {
+    status: 'ASSIGNED',
+    label: 'Assigned',
+    icon: <UserCheck size={18} />,
+    gradient: 'from-blue-500 to-blue-600',
+    ring: 'ring-blue-400/40',
+    bg: 'bg-blue-500/10',
+    text: 'text-blue-400',
+    border: 'border-blue-500/30',
+    glow: 'shadow-blue-500/20',
+    chartColor: '#60a5fa',
   },
   {
     status: 'IN_DEVELOPMENT',
@@ -264,6 +270,7 @@ const Dashboard = () => {
   const [stageTasks, setStageTasks] = useState<DashboardTask[]>([]);
   const [stageLoading, setStageLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleTaskClick = async (taskId: string) => {
     try {
@@ -373,6 +380,107 @@ const Dashboard = () => {
     [tasks],
   );
 
+  const upcomingDeadlines = useMemo(() => {
+    return [...tasks]
+      .filter(t => t.plannedEndDate && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(t.status))
+      .sort((a, b) => new Date(a.plannedEndDate!).getTime() - new Date(b.plannedEndDate!).getTime())
+      .slice(0, 6);
+  }, [tasks]);
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase().trim();
+    return tasks.filter(t => {
+      const title = String(t.title || '').toLowerCase();
+      const desc = String(t.description || '').toLowerCase();
+      const id = String(t.id || '').toLowerCase();
+      const statusValue = String(t.status || '').toLowerCase();
+      const statusLabel = (STAGES.find(s => s.status === t.status)?.label || '').toLowerCase();
+      const moduleName = (t.module?.name || '').toLowerCase();
+      
+      const assigneeName = getAssigneeName(t.assignee).toLowerCase();
+      const clientName = getAssigneeName(t.client).toLowerCase();
+      
+      const managerNames = [
+        t.manager ? getAssigneeName(t.manager) : '',
+        ...(t.managers || []).map(m => getAssigneeName(m))
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      const developerNames = (t.developers || [])
+        .map(d => getAssigneeName(d))
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      const verifierNames = (t.verifiers || [])
+        .map(v => getAssigneeName(v))
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return (
+        title.includes(query) ||
+        id.includes(query) ||
+        desc.includes(query) ||
+        statusValue.includes(query) ||
+        statusLabel.includes(query) ||
+        moduleName.includes(query) ||
+        assigneeName.includes(query) ||
+        clientName.includes(query) ||
+        managerNames.includes(query) ||
+        developerNames.includes(query) ||
+        verifierNames.includes(query)
+      );
+    });
+  }, [tasks, searchQuery]);
+
+  const filteredStageTasks = useMemo(() => {
+    if (!searchQuery.trim()) return stageTasks;
+    const query = searchQuery.toLowerCase().trim();
+    return stageTasks.filter(t => {
+      const title = String(t.title || '').toLowerCase();
+      const desc = String(t.description || '').toLowerCase();
+      const id = String(t.id || '').toLowerCase();
+      const statusValue = String(t.status || '').toLowerCase();
+      const statusLabel = (STAGES.find(s => s.status === t.status)?.label || '').toLowerCase();
+      const moduleName = (t.module?.name || '').toLowerCase();
+      
+      const assigneeName = getAssigneeName(t.assignee).toLowerCase();
+      const clientName = getAssigneeName(t.client).toLowerCase();
+      
+      const managerNames = [
+        t.manager ? getAssigneeName(t.manager) : '',
+        ...(t.managers || []).map(m => getAssigneeName(m))
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      const developerNames = (t.developers || [])
+        .map(d => getAssigneeName(d))
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      const verifierNames = (t.verifiers || [])
+        .map(v => getAssigneeName(v))
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return (
+        title.includes(query) ||
+        id.includes(query) ||
+        desc.includes(query) ||
+        statusValue.includes(query) ||
+        statusLabel.includes(query) ||
+        moduleName.includes(query) ||
+        assigneeName.includes(query) ||
+        clientName.includes(query) ||
+        managerNames.includes(query) ||
+        developerNames.includes(query) ||
+        verifierNames.includes(query)
+      );
+    });
+  }, [stageTasks, searchQuery]);
+
   const selectedStageConfig = STAGES.find(s => s.status === selectedStage);
 
   if (loading) {
@@ -394,13 +502,35 @@ const Dashboard = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 custom-scrollbar">
       {/* ── Header ──────────────────────────────────────── */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-100">
-          {greeting}, {currentUser?.firstName || currentUser?.username || 'there'}
-        </h1>
-        <p className="text-gray-400 text-sm">
-          Here's what's happening across your change management pipeline.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-100">
+            {greeting}, {currentUser?.firstName || currentUser?.username || 'there'}
+          </h1>
+          <p className="text-gray-400 text-sm">
+            Here's what's happening across your change management pipeline.
+          </p>
+        </div>
+
+        {/* Search Input */}
+        <div className="relative w-full md:w-80 shrink-0">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search for a patch..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-10 py-2.5 bg-gray-900/60 border border-gray-700/50 rounded-xl text-sm text-gray-200 placeholder-gray-400 focus:outline-none focus:border-primary-500 transition-colors"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Overview Row: Donut + Stage Cards ───────────── */}
@@ -471,7 +601,87 @@ const Dashboard = () => {
       </div>
 
       {/* ── Filtered Patch List / Default Recent Activity ── */}
-      {selectedStage && selectedStageConfig ? (
+      {searchQuery ? (
+        <div className="glass-card flex flex-col animate-fade-slide-up">
+          {/* Header */}
+          <div className="p-5 border-b border-gray-700/50 flex justify-between items-center">
+            <h2 className="text-lg font-bold text-gray-100 flex items-center gap-3">
+              <span className="p-1.5 rounded-lg bg-primary-500/10 text-primary-400">
+                <Search size={18} />
+              </span>
+              Search Results
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary-500/10 text-primary-400">
+                {searchResults.length}
+              </span>
+            </h2>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white transition-colors border border-gray-700"
+            >
+              <X size={14} />
+              Clear
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-5">
+            {searchResults.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {searchResults.map((task, i) => {
+                  const stageConf = STAGES.find(s => s.status === task.status);
+                  return (
+                    <div
+                      key={task.id}
+                      className={`
+                        animate-fade-slide-up stagger-${Math.min(i + 1, 11)}
+                        group flex flex-col p-4 rounded-xl border border-gray-700/30
+                        bg-gray-900/50 hover:bg-gray-800/70 hover:border-gray-600/50
+                        transition-all duration-200 hover:shadow-md hover:shadow-black/20 cursor-pointer
+                      `}
+                      onClick={() => handleTaskClick(task.id)}
+                    >
+                      <div className="flex justify-between items-start gap-3 mb-3">
+                        <h3 className="font-semibold text-gray-200 line-clamp-1 group-hover:text-white transition-colors">
+                          {task.title}
+                        </h3>
+                        <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                          stageConf
+                            ? `${stageConf.bg} ${stageConf.text} ${stageConf.border}`
+                            : 'bg-gray-500/10 text-gray-400 border-gray-500/30'
+                        }`}>
+                          {stageConf?.label || task.status}
+                        </span>
+                      </div>
+                      {task.plannedEndDate && (
+                        <div className={`text-[10px] font-medium flex items-center gap-1 mb-3 px-2 py-0.5 rounded bg-gray-950/40 border border-gray-800 self-start ${
+                          new Date(task.plannedEndDate).getTime() < Date.now() ? 'text-rose-400 border-rose-900/30' : 'text-amber-400 border-amber-900/30'
+                        }`}>
+                          <Clock size={10} className="shrink-0" />
+                          <span>Deadline: {new Date(task.plannedEndDate).toLocaleDateString()}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-800/50">
+                        <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                          <Layers size={12} />
+                          {task.module?.name || 'No Module'}
+                        </span>
+                        <span className="text-xs text-gray-400 font-medium">
+                          {getAssigneeName(task.assignee)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center text-gray-500 py-16 gap-2">
+                <Search size={32} className="opacity-40" />
+                <p className="text-sm">No patches found matching "{searchQuery}".</p>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : selectedStage && selectedStageConfig ? (
         <div className="glass-card flex flex-col animate-fade-slide-up">
           {/* Header */}
           <div className="p-5 border-b border-gray-700/50 flex justify-between items-center">
@@ -481,7 +691,7 @@ const Dashboard = () => {
               </span>
               {selectedStageConfig.label} Patches
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${selectedStageConfig.bg} ${selectedStageConfig.text}`}>
-                {stageTasks.length}
+                {filteredStageTasks.length}
               </span>
             </h2>
             <button
@@ -500,9 +710,9 @@ const Dashboard = () => {
                 <div className="w-6 h-6 rounded-full border-2 border-primary-500/20 border-t-primary-500 animate-spin" />
                 <p className="text-xs text-gray-500">Fetching patches…</p>
               </div>
-            ) : stageTasks.length > 0 ? (
+            ) : filteredStageTasks.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {stageTasks.map((task, i) => (
+                {filteredStageTasks.map((task, i) => (
                   <div
                     key={task.id}
                     className={`
@@ -521,6 +731,14 @@ const Dashboard = () => {
                         {selectedStageConfig.label}
                       </span>
                     </div>
+                    {task.plannedEndDate && (
+                      <div className={`text-[10px] font-medium flex items-center gap-1 mb-3 px-2 py-0.5 rounded bg-gray-950/40 border border-gray-800 self-start ${
+                        new Date(task.plannedEndDate).getTime() < Date.now() ? 'text-rose-400 border-rose-900/30' : 'text-amber-400 border-amber-900/30'
+                      }`}>
+                        <Clock size={10} className="shrink-0" />
+                        <span>Deadline: {new Date(task.plannedEndDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-800/50">
                       <span className="text-xs text-gray-500 flex items-center gap-1.5">
                         <Layers size={12} />
@@ -536,75 +754,141 @@ const Dashboard = () => {
             ) : (
               <div className="flex flex-col items-center justify-center text-gray-500 py-16 gap-2">
                 <div className={`p-3 rounded-full ${selectedStageConfig.bg} ${selectedStageConfig.text} opacity-40`}>
-                  {selectedStageConfig.icon}
+                  {searchQuery ? <Search size={24} /> : selectedStageConfig.icon}
                 </div>
-                <p className="text-sm">No patches in <span className="font-medium">{selectedStageConfig.label}</span>.</p>
+                <p className="text-sm">
+                  {searchQuery 
+                    ? `No patches found matching "${searchQuery}" in ${selectedStageConfig.label}.` 
+                    : `No patches in ${selectedStageConfig.label}.`
+                  }
+                </p>
               </div>
             )}
           </div>
         </div>
       ) : (
-        /* Default: Recent Activity */
-        <div className="glass-card flex flex-col animate-fade-slide-up">
-          <div className="p-5 border-b border-gray-700/50 flex justify-between items-center">
-            <h2 className="text-lg font-bold text-gray-100 flex items-center gap-2">
-              <Activity size={18} className="text-primary-500" />
-              Recent Activity
-            </h2>
-            <Link
-              to="/patches"
-              className="text-xs font-semibold text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1"
-            >
-              View Board <ArrowRight size={14} />
-            </Link>
+        /* Default view: 2-column layout (Recent Activity on the left, Deadline Alerts on the right) */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Column 1: Recent Activity */}
+          <div className="lg:col-span-2 glass-card flex flex-col animate-fade-slide-up">
+            <div className="p-5 border-b border-gray-700/50 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-gray-100 flex items-center gap-2">
+                <Activity size={18} className="text-primary-500" />
+                Recent Activity
+              </h2>
+              <Link
+                to="/patches"
+                className="text-xs font-semibold text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1"
+              >
+                View Board <ArrowRight size={14} />
+              </Link>
+            </div>
+            <div className="p-5 flex-1">
+              {recentAll.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {recentAll.map((task, i) => {
+                    const stageConf = STAGES.find(s => s.status === task.status);
+                    return (
+                      <div
+                        key={task.id}
+                        className={`
+                          animate-fade-slide-up stagger-${Math.min(i + 1, 11)}
+                          group flex flex-col p-4 rounded-xl border border-gray-700/30
+                          bg-gray-900/50 hover:bg-gray-800/70 hover:border-gray-600/50
+                          transition-all duration-200 cursor-pointer hover:shadow-md hover:shadow-black/20
+                        `}
+                        onClick={() => handleTaskClick(task.id)}
+                      >
+                        <div className="flex justify-between items-start gap-2 mb-3">
+                          <h3 className="font-semibold text-gray-200 text-sm line-clamp-1 group-hover:text-white transition-colors">
+                            {task.title}
+                          </h3>
+                        </div>
+                        <span className={`self-start text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border mb-3 ${
+                          stageConf
+                            ? `${stageConf.bg} ${stageConf.text} ${stageConf.border}`
+                            : 'bg-gray-500/10 text-gray-400 border-gray-500/30'
+                        }`}>
+                          {stageConf?.label || task.status}
+                        </span>
+                        {task.plannedEndDate && (
+                          <div className={`text-[10px] font-medium flex items-center gap-1 mb-3 px-2 py-0.5 rounded bg-gray-950/40 border border-gray-800 self-start ${
+                            new Date(task.plannedEndDate).getTime() < Date.now() ? 'text-rose-400 border-rose-900/30' : 'text-amber-400 border-amber-900/30'
+                          }`}>
+                            <Clock size={10} className="shrink-0" />
+                            <span>Deadline: {new Date(task.plannedEndDate).toLocaleDateString()}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-800/50">
+                          <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                            <Layers size={12} />
+                            {task.module?.name || 'No Module'}
+                          </span>
+                          <span className="text-xs text-gray-400 font-medium">
+                            {getAssigneeName(task.assignee)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-gray-500 py-16 gap-2">
+                  <Clock size={32} className="opacity-40" />
+                  <p className="text-sm">No patches yet. Create your first change to get started.</p>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="p-5">
-            {recentAll.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                {recentAll.map((task, i) => {
-                  const stageConf = STAGES.find(s => s.status === task.status);
-                  return (
-                    <div
-                      key={task.id}
-                      className={`
-                        animate-fade-slide-up stagger-${Math.min(i + 1, 11)}
-                        group flex flex-col p-4 rounded-xl border border-gray-700/30
-                        bg-gray-900/50 hover:bg-gray-800/70 hover:border-gray-600/50
-                        transition-all duration-200 cursor-pointer hover:shadow-md hover:shadow-black/20
-                      `}
-                      onClick={() => handleTaskClick(task.id)}
-                    >
-                      <div className="flex justify-between items-start gap-2 mb-3">
-                        <h3 className="font-semibold text-gray-200 text-sm line-clamp-1 group-hover:text-white transition-colors">
+
+          {/* Column 2: Deadline Alerts */}
+          <div className="glass-card flex flex-col animate-fade-slide-up">
+            <div className="p-5 border-b border-gray-700/50 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-gray-100 flex items-center gap-2">
+                <Clock size={18} className="text-amber-500 animate-pulse-glow" />
+                Deadline Alerts
+              </h2>
+            </div>
+            <div className="p-5 flex-1 flex flex-col justify-start">
+              {upcomingDeadlines.length > 0 ? (
+                <div className="space-y-3.5">
+                  {upcomingDeadlines.map((task) => {
+                    const isOverdue = new Date(task.plannedEndDate!).getTime() < Date.now();
+                    const diffDays = Math.ceil((new Date(task.plannedEndDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => handleTaskClick(task.id)}
+                        className="group flex flex-col p-3.5 rounded-xl border border-gray-800 bg-gray-900/30 hover:bg-gray-800/50 hover:border-gray-700/60 transition-all cursor-pointer"
+                      >
+                        <h4 className="text-sm font-semibold text-gray-200 group-hover:text-white transition-colors truncate font-medium">
                           {task.title}
-                        </h3>
+                        </h4>
+                        <div className="flex items-center justify-between mt-2.5">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            isOverdue
+                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              : diffDays <= 1
+                              ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          }`}>
+                            {isOverdue ? 'Overdue' : diffDays === 0 ? 'Due Today' : diffDays === 1 ? 'Due Tomorrow' : `Due in ${diffDays} days`}
+                          </span>
+                          <span className="text-xs text-gray-400 font-mono">
+                            {new Date(task.plannedEndDate!).toLocaleDateString()}
+                          </span>
+                        </div>
                       </div>
-                      <span className={`self-start text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border mb-3 ${
-                        stageConf
-                          ? `${stageConf.bg} ${stageConf.text} ${stageConf.border}`
-                          : 'bg-gray-500/10 text-gray-400 border-gray-500/30'
-                      }`}>
-                        {stageConf?.label || task.status}
-                      </span>
-                      <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-800/50">
-                        <span className="text-xs text-gray-500 flex items-center gap-1.5">
-                          <Layers size={12} />
-                          {task.module?.name || 'No Module'}
-                        </span>
-                        <span className="text-xs text-gray-400 font-medium">
-                          {getAssigneeName(task.assignee)}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center text-gray-500 py-16 gap-2">
-                <Clock size={32} className="opacity-40" />
-                <p className="text-sm">No patches yet. Create your first change to get started.</p>
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-gray-500 py-16 gap-2 my-auto">
+                  <CheckCircle size={32} className="text-emerald-500/70" />
+                  <p className="text-sm">All clear! No urgent deadlines.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

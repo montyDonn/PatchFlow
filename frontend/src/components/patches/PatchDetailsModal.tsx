@@ -47,8 +47,8 @@ interface PatchDetailsModalProps {
 
 const STATUSES = [
   { value: 'DRAFT', label: 'Draft' },
-  { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
+  { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_DEVELOPMENT', label: 'In Development' },
   { value: 'VERIFYING', label: 'Verifying' },
   { value: 'COMPLETED', label: 'Completed' },
@@ -60,9 +60,9 @@ const STATUSES = [
 ];
 
 const NEXT_STATUSES: Record<string, string[]> = {
-  DRAFT: ['ASSIGNED'],
-  ASSIGNED: ['PENDING_APPROVAL'],
-  PENDING_APPROVAL: ['IN_DEVELOPMENT'],
+  DRAFT: ['PENDING_APPROVAL'],
+  PENDING_APPROVAL: ['ASSIGNED'],
+  ASSIGNED: ['IN_DEVELOPMENT'],
   IN_DEVELOPMENT: ['VERIFYING'],
   VERIFYING: ['COMPLETED', 'RETURNED_TO_DEVELOPER', 'REJECTED', 'DELAYED', 'ON_HOLD', 'CANCELLED'],
   RETURNED_TO_DEVELOPER: ['IN_DEVELOPMENT'],
@@ -91,6 +91,14 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   const [editStatus, setEditStatus] = useState('');
   const [activeTab, setActiveTab] = useState<'timeline' | 'audit'>('timeline');
 
+  // Inline deadline editing states (Bug 2 fix)
+  const [isEditingDeadline, setIsEditingDeadline] = useState(false);
+  const [inlineDeadline, setInlineDeadline] = useState('');
+  const [savingDeadline, setSavingDeadline] = useState(false);
+
+  // Whether the assignment panel was auto-opened (Bug 3 fix)
+  const [autoOpenedAssignment, setAutoOpenedAssignment] = useState(false);
+
   // Client & request ID states
   const [editClientId, setEditClientId] = useState('');
   const [editClientRequestId, setEditClientRequestId] = useState('0');
@@ -105,21 +113,42 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
 
   const isDeleted = task.lifecycleStatus === 100;
   const canManageLifecycle = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
-  
-  const isTaskManager = task.managers?.some((m: any) => (m.id || m.userId) === currentUser?.id) || task.managerId === currentUser?.id || task.manager?.id === currentUser?.id;
-  const canAssignResources = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser?.role === 'MANAGER' && isTaskManager);
+
+  // currentUser.id may be undefined for sessions created before the login fix.
+  // Fall back to currentUser.userId (the raw field the backend sends) for robustness.
+  const currentUserId = currentUser?.id || (currentUser as any)?.userId;
+
+  const isTaskManager = 
+    task.managers?.some((m: any) => (m.id || m.userId) === currentUserId) || 
+    task.managerId === currentUserId || 
+    task.manager?.id === currentUserId ||
+    task.manager?.userId === currentUserId;
+
+  const canAssignResources = 
+    currentUser?.role === 'SUPER_ADMIN' || 
+    currentUser?.role === 'ADMIN' || 
+    (currentUser?.role === 'MANAGER' && isTaskManager);
+
   const canEditResources = canAssignResources && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(task.status);
   let nextStatuses = NEXT_STATUSES[task.status] || [];
+
+  // When the patch is awaiting manager approval, ASSIGNED must NOT be reachable
+  // via the normal dropdown — the manager must go through the Approve & Assign card
+  // (which enforces deadline + resource selection before promoting the status).
+  if (task.status === 'PENDING_APPROVAL' && canAssignResources) {
+    nextStatuses = nextStatuses.filter(s => s !== 'ASSIGNED');
+  }
   if (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') {
     // Admins see all valid transitions from the matrix, no further filtering required
   } else if (currentUser?.role === 'CLIENT') {
-    nextStatuses = task.status === 'DRAFT' ? ['ASSIGNED'] : [];
+    nextStatuses = task.status === 'DRAFT' ? ['PENDING_APPROVAL'] : [];
   } else if (currentUser?.role === 'MANAGER') {
-    nextStatuses = nextStatuses.filter(status => 
-      (task.status === 'ASSIGNED' && status === 'PENDING_APPROVAL') ||
-      (task.status === 'PENDING_APPROVAL' && status === 'IN_DEVELOPMENT') ||
+    // Only the assigned manager can move the patch forward
+    nextStatuses = isTaskManager ? nextStatuses.filter(status => 
+      (task.status === 'PENDING_APPROVAL' && status === 'ASSIGNED') ||
+      (task.status === 'ASSIGNED' && status === 'IN_DEVELOPMENT') ||
       (['RETURNED_TO_DEVELOPER', 'DELAYED', 'ON_HOLD'].includes(task.status) && status === 'IN_DEVELOPMENT')
-    );
+    ) : [];
   } else if (currentUser?.role === 'DEVELOPER') {
     nextStatuses = nextStatuses.filter(status => 
       (task.status === 'IN_DEVELOPMENT' && status === 'VERIFYING') ||
@@ -159,7 +188,10 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     if (task.plannedEndDate) {
       setEditPlannedEndDate(task.plannedEndDate.split('T')[0]);
     } else {
-      setEditPlannedEndDate('');
+      // Pre-fill with client's requested deadline so the manager doesn't
+      // have to retype it if they accept it unchanged ("no edit required" case).
+      const clientDl = getClientDeadline(task.description);
+      setEditPlannedEndDate(clientDl || '');
     }
     setEditStatus(task.status);
 
@@ -173,6 +205,20 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     setEditModuleId(task.moduleId || task.module?.id || '');
     setEditManagerId(task.managerId || '');
   }, [task]);
+
+  // Bug 3 fix: Auto-open assignment panel when manager/admin opens an ASSIGNED
+  // patch that has no developers or verifiers assigned yet
+  useEffect(() => {
+    if (
+      canAssignResources &&
+      task.status === 'ASSIGNED' &&
+      (!task.developers || task.developers.length === 0) &&
+      (!task.verifiers || task.verifiers.length === 0)
+    ) {
+      setIsEditingAssignments(true);
+      setAutoOpenedAssignment(true);
+    }
+  }, [task.id]); // only trigger once when the modal opens for this task
 
   // Load active users list & modules list
   useEffect(() => {
@@ -195,8 +241,17 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!newStatus) return;
-    const reason = window.prompt(`Please enter a reason for moving this patch to ${newStatus}:`);
-    if (reason === null) return; // User canceled
+    
+    let reason = '';
+    if (newStatus === 'PENDING_APPROVAL') {
+      reason = 'Submitted for manager review';
+    } else if (newStatus === 'ASSIGNED') {
+      reason = 'Approved and assigned resources';
+    } else {
+      const promptVal = window.prompt(`Please enter a reason for moving this patch to ${newStatus}:`);
+      if (promptVal === null) return; // User canceled
+      reason = promptVal;
+    }
 
     setUpdating(true);
     setError('');
@@ -311,6 +366,72 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
       }
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to save resource assignments.');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // ── Approve & Assign handler ────────────────────────────────────────────────
+  // Runs when manager submits the dedicated Approve & Assign card.
+  // Saves developers, verifiers and approved deadline in one call, then
+  // moves the patch to ASSIGNED — no separate dropdown click required.
+  const handleApproveAndAssign = async () => {
+    if (!editPlannedEndDate) {
+      setError('Please select an Approved Deadline.');
+      return;
+    }
+    setUpdating(true);
+    setError('');
+    try {
+      // Auto-map users to the module if they are not already members
+      const allSelectedIds = [...selectedManagerIds, ...selectedDevIds, ...selectedVerIds];
+      const usersToMap = usersList.filter(
+        (u) =>
+          allSelectedIds.includes(u.id || u.userId || '') &&
+          task.moduleId &&
+          !(u.modules || []).some(
+            (m: any) => m.id === task.moduleId || m.moduleId === task.moduleId
+          )
+      );
+      if (usersToMap.length > 0 && task.moduleId) {
+        await Promise.all(
+          usersToMap.map(async (user) => {
+            const currentModuleIds = (user.modules || [])
+              .map((m: any) => m.id || m.moduleId)
+              .filter(Boolean) as string[];
+            if (!currentModuleIds.includes(task.moduleId!)) {
+              await updateUserModules(user.id || user.userId || '', [
+                ...currentModuleIds,
+                task.moduleId!,
+              ]);
+            }
+          })
+        );
+      }
+
+      const updated = await updateTaskDetails(task.id, {
+        managerIds: selectedManagerIds,
+        developerIds: selectedDevIds,
+        verifierIds: selectedVerIds,
+        status: 'ASSIGNED',
+        plannedEndDate: editPlannedEndDate,
+        reason: 'Approved and assigned resources',
+      });
+
+      // Sync local state
+      if (updated.managers)
+        setSelectedManagerIds(updated.managers.map((m: any) => m.id || m.userId));
+      if (updated.developers)
+        setSelectedDevIds(updated.developers.map((d: any) => d.id || d.userId));
+      if (updated.verifiers)
+        setSelectedVerIds(updated.verifiers.map((v: any) => v.id || v.userId));
+      if (updated.plannedEndDate)
+        setEditPlannedEndDate(updated.plannedEndDate.split('T')[0]);
+      setEditStatus(updated.status);
+
+      if (onUpdated) onUpdated(updated);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Failed to approve and assign resources.');
     } finally {
       setUpdating(false);
     }
@@ -601,11 +722,11 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                       Edit Details
                     </button>
                     <button 
-                      onClick={() => handleStatusUpdate('ASSIGNED')} 
+                      onClick={() => handleStatusUpdate('PENDING_APPROVAL')} 
                       disabled={updating}
                       className="inline-flex items-center justify-center rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-white hover:bg-primary-400 transition-colors disabled:opacity-60"
                     >
-                      {updating ? 'Submitting...' : 'Submit & Assign to Manager'}
+                      {updating ? 'Submitting...' : 'Submit for Manager Review'}
                     </button>
                   </>
                 )}
@@ -846,8 +967,83 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
               </div>
             )}
 
+            {/* ── Approve & Assign card (PENDING_APPROVAL only, managers/admins) ── */}
+            {task.status === 'PENDING_APPROVAL' && canAssignResources && !isDeleted && (
+              <div className="bg-gradient-to-br from-gray-800/90 to-gray-900/70 rounded-xl p-5 border border-primary-500/30 shadow-lg shadow-primary-500/5 space-y-4">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-wider flex items-center gap-2 text-white mb-1">
+                    <CheckCircle2 size={16} className="text-primary-400" /> Approve &amp; Assign
+                  </h3>
+                  <p className="text-[11px] text-gray-400 leading-relaxed">
+                    Set the approved deadline and assign developers &amp; verifiers, then click <span className="text-primary-300 font-semibold">Approve</span> to move the patch to the next stage.
+                  </p>
+                </div>
+
+                <div className="space-y-3.5">
+                  {/* Approved Deadline */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">
+                      Approved Deadline
+                      {getClientDeadline(task.description) && (
+                        <span className="ml-2 text-[10px] text-primary-400 normal-case font-normal">
+                          (Client requested: {new Date(getClientDeadline(task.description)!).toLocaleDateString()})
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="date"
+                      value={editPlannedEndDate}
+                      onChange={(e) => setEditPlannedEndDate(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Developers */}
+                  {renderUserSelector(
+                    'Developers',
+                    usersList.filter((u) => u.role === 'DEVELOPER'),
+                    selectedDevIds,
+                    setSelectedDevIds
+                  )}
+
+                  {/* Verifiers */}
+                  {renderUserSelector(
+                    'Verifiers',
+                    usersList.filter((u) => u.role === 'VERIFIER'),
+                    selectedVerIds,
+                    setSelectedVerIds
+                  )}
+
+                  {/* Submit */}
+                  <button
+                    onClick={handleApproveAndAssign}
+                    disabled={updating || !editPlannedEndDate}
+                    className="w-full bg-gradient-to-r from-primary-600 to-primary-500 hover:from-primary-500 hover:to-primary-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-2.5 px-4 rounded-lg text-xs transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle2 size={13} />
+                    {updating ? 'Approving…' : 'Approve & Assign Resources'}
+                  </button>
+
+                  {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Bug 3: Auto-assignment alert banner */}
+            {autoOpenedAssignment && isEditingAssignments && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3 animate-in slide-in-from-top duration-300">
+                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
+                  <Users size={16} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-amber-300">Resource Assignment Required</p>
+                  <p className="text-xs text-amber-400/80 mt-1">This patch has been approved but needs developers and verifiers assigned before work can begin.</p>
+                </div>
+              </div>
+            )}
+
             {/* Dynamic Assignments Panel (Multi-Developer & Multi-Verifier) */}
-            <div className="bg-gray-800/50 rounded-xl p-5 border border-gray-700/50">
+            <div className={`bg-gray-800/50 rounded-xl p-5 border ${autoOpenedAssignment && isEditingAssignments ? 'border-amber-500/40 ring-1 ring-amber-500/20' : 'border-gray-700/50'}`}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2 text-white">
                   <Users size={16} /> Resources
@@ -857,6 +1053,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     onClick={() => {
                       if (isEditingAssignments) {
                         saveAssignments();
+                        setAutoOpenedAssignment(false);
                       } else {
                         setIsEditingAssignments(true);
                       }
@@ -973,7 +1170,22 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     );
                   })()}
 
-                  <div>
+                  {getClientDeadline(task.description) && (
+                    <div className="flex justify-between items-start border-t border-gray-700/30 pt-2.5">
+                      <span className="text-gray-500 font-semibold text-primary-400">Requested Deadline:</span>
+                      <span className="text-primary-300 font-medium font-mono text-xs">{new Date(getClientDeadline(task.description)!).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-start">
+                    <span className="text-gray-500 font-semibold text-primary-400">Approved Deadline:</span>
+                    {task.plannedEndDate ? (
+                      <span className="text-emerald-400 font-medium font-mono text-xs">{new Date(task.plannedEndDate).toLocaleDateString()}</span>
+                    ) : (
+                      <span className="text-amber-400 font-medium italic text-xs">Pending Manager Approval</span>
+                    )}
+                  </div>
+
+                  <div className="border-t border-gray-700/30 pt-2.5">
                     <span className="text-gray-500 block mb-1">Managers:</span>
                     {task.managers && task.managers.length > 0 ? (
                       <ul className="list-disc pl-4 space-y-0.5 text-xs text-gray-300">
@@ -1138,13 +1350,71 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     <span className="text-primary-300 font-medium font-mono">{new Date(getClientDeadline(task.description)!).toLocaleDateString()}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500 flex items-center gap-1 font-semibold"><CheckCircle2 size={14}/> Approved Deadline</span>
-                  {task.plannedEndDate ? (
-                    <span className="text-emerald-400 font-medium font-mono">{new Date(task.plannedEndDate).toLocaleDateString()}</span>
-                  ) : (
-                    <span className="text-amber-400 font-medium italic">Pending Approval</span>
-                  )}
+                {/* Bug 2 fix: Inline editable Approved Deadline */}
+                <div className="border-t border-gray-700/30 pt-2 mt-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-500 flex items-center gap-1 font-semibold"><CheckCircle2 size={14}/> Approved Deadline</span>
+                    {!isEditingDeadline ? (
+                      <div className="flex items-center gap-2">
+                        {task.plannedEndDate ? (
+                          <span className="text-emerald-400 font-medium font-mono">{new Date(task.plannedEndDate).toLocaleDateString()}</span>
+                        ) : (
+                          <span className="text-amber-400 font-medium italic">Pending Approval</span>
+                        )}
+                        {canAssignResources && !isDeleted && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(task.status) && (
+                          <button
+                            onClick={() => {
+                              setInlineDeadline(task.plannedEndDate ? task.plannedEndDate.split('T')[0] : '');
+                              setIsEditingDeadline(true);
+                            }}
+                            className="text-[10px] font-semibold text-primary-400 hover:text-primary-300 transition-colors bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/20 px-2 py-0.5 rounded-md"
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={inlineDeadline}
+                          onChange={(e) => setInlineDeadline(e.target.value)}
+                          className="bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors w-[130px]"
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!inlineDeadline) {
+                              setError('Please select a deadline date.');
+                              return;
+                            }
+                            setSavingDeadline(true);
+                            setError('');
+                            try {
+                              const updated = await updateTaskDetails(task.id, {
+                                plannedEndDate: inlineDeadline,
+                              });
+                              setIsEditingDeadline(false);
+                              if (onUpdated) onUpdated(updated);
+                            } catch (err: any) {
+                              setError(err?.response?.data?.error || 'Failed to update deadline.');
+                            } finally {
+                              setSavingDeadline(false);
+                            }
+                          }}
+                          disabled={savingDeadline}
+                          className="text-[10px] font-semibold text-emerald-400 hover:text-emerald-300 transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-2 py-0.5 rounded-md disabled:opacity-50"
+                        >
+                          {savingDeadline ? '...' : 'Save'}
+                        </button>
+                        <button
+                          onClick={() => setIsEditingDeadline(false)}
+                          className="text-[10px] font-semibold text-gray-400 hover:text-gray-300 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

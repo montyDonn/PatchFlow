@@ -4,15 +4,16 @@ import { PatchColumn } from '../components/patches/PatchColumn';
 import { PatchDetailsModal } from '../components/patches/PatchDetailsModal';
 import { CreatePatchModal } from '../components/CreatePatchModal';
 import type { Task } from '../api/tasks';
+import api from '../api/client';
 import { Clock, ShieldCheck, Send, PlayCircle, CheckCircle2, Search, Filter, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const COLUMNS = [
   {
-    id: "DRAFT_ASSIGNED",
-    title: "Draft & Assigned",
+    id: "DRAFT",
+    title: "Draft",
     icon: <Clock size={18} className="text-gray-400" />,
-    statuses: ["DRAFT", "ASSIGNED"],
+    statuses: ["DRAFT"],
     borderClass: "border-gray-500",
     bgClass: "bg-gray-800/40",
   },
@@ -25,10 +26,10 @@ const COLUMNS = [
     bgClass: "bg-yellow-500/10",
   },
   {
-    id: "IN_DEVELOPMENT",
-    title: "In Development",
+    id: "ASSIGNED",
+    title: "Assigned / In Progress",
     icon: <Send size={18} className="text-blue-400" />,
-    statuses: ["IN_DEVELOPMENT", "RETURNED_TO_DEVELOPER"],
+    statuses: ["ASSIGNED", "IN_DEVELOPMENT", "RETURNED_TO_DEVELOPER"],
     borderClass: "border-blue-500",
     bgClass: "bg-blue-500/10",
   },
@@ -80,6 +81,20 @@ export default function PatchBoardPage() {
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isCreateOpen, setCreateOpen] = useState(false);
+
+  // Re-fetch full task data (with comments, timeline, attachments, audit logs)
+  // before opening the details modal. The list-level objects are lightweight
+  // and lack nested relationships needed for the PatchDetailsModal.
+  const handleTaskClick = async (task: Task) => {
+    try {
+      const res = await api.get(`/tasks/${task.id}`);
+      setSelectedTask(res.data);
+    } catch (error) {
+      console.error('Error fetching full task details:', error);
+      // Fallback to the list-level object if fetch fails
+      setSelectedTask(task);
+    }
+  };
 
   if (loading) {
     return (
@@ -193,7 +208,7 @@ export default function PatchBoardPage() {
                 borderClass={col.borderClass}
                 bgClass={col.bgClass}
                 tasks={colTasks}
-                onTaskClick={setSelectedTask}
+                onTaskClick={handleTaskClick}
               />
             );
           })}

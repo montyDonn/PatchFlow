@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import api from "../api/client";
 import { submitAccessRequest } from "../api/accountRequests";
+import logo from "../assets/logo.png";
 import {
-  Activity, Eye, EyeOff, X, ChevronLeft,
+  Eye, EyeOff, X, ChevronLeft,
   UserCheck, Users, CheckCircle, Phone, User, Lock, AtSign,
 } from "lucide-react";
 
@@ -391,7 +392,10 @@ export function Login() {
     setLoading(true);
     try {
       const response = await api.post("/auth/login", { username, password });
-      login(response.data.user, response.data.token);
+      const rawUser = response.data.user;
+      // Backend returns `userId`; normalize to `id` for the auth store
+      const normalizedUser = { ...rawUser, id: rawUser.id || rawUser.userId };
+      login(normalizedUser, response.data.token);
       navigate("/");
     } catch (err: any) {
       setError(err.response?.data?.error || "Invalid credentials. Please try again.");
@@ -411,9 +415,7 @@ export function Login() {
         {/* Logo / heading */}
         <div className="sm:mx-auto sm:w-full sm:max-w-md relative">
           <div className="flex justify-center items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary-500/10 border border-primary-500/20 flex items-center justify-center">
-              <Activity className="text-primary-400" size={26} />
-            </div>
+            <img src={logo} alt="Logo" className="w-14 h-14 object-contain rounded-2xl" />
             <h1 className="text-3xl font-extrabold text-white tracking-tight">
               Change Management
             </h1>

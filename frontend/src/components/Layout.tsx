@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, LogOut, Activity, Bell, Layers, Users, Share2, BarChart3, Shield, Sun, Moon, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, LogOut, Bell, Layers, Users, Share2, BarChart3, Shield, Sun, Moon, ClipboardList, Palette } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
 import { SwitchAccountDropdown } from './layout/SwitchAccountDropdown';
+import logo from '../assets/logo.png';
 
 function Sidebar() {
   const user = useAuthStore(state => state.user);
@@ -17,9 +18,12 @@ function Sidebar() {
 
   return (
     <aside className="w-64 border-r border-gray-700/50 glass hidden md:flex flex-col h-screen sticky top-0">
-      <div className="p-6 flex items-center gap-3">
-        <Activity className="text-primary-500" size={28} />
-        <span className="font-bold text-xl tracking-tight text-gray-100">Change Management</span>
+      <div className="p-5 flex items-center gap-3 border-b border-gray-800/60 bg-gray-900/10">
+        <img src={logo} alt="Logo" className="w-10 h-10 object-contain rounded-xl" />
+        <div className="flex flex-col">
+          <span className="font-extrabold text-lg tracking-tight text-gray-100 leading-none">PatchFlow</span>
+          <span className="text-[10px] text-gray-500 font-semibold tracking-wider uppercase mt-1">Change Board</span>
+        </div>
       </div>
       
       <nav className="flex-1 px-4 py-6 space-y-2">
@@ -71,7 +75,7 @@ function Sidebar() {
 }
 
 interface TopbarProps {
-  theme: 'dark' | 'light';
+  theme: 'blue' | 'white' | 'black';
   onThemeToggle: () => void;
 }
 
@@ -85,9 +89,25 @@ function Topbar({ theme, onThemeToggle }: TopbarProps) {
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch in-app notifications
-  useEffect(() => {
+  const fetchNotifications = () => {
     api.get("/notifications").then(res => setNotifications(res.data)).catch(console.error);
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    // Poll notifications every 30s to keep it real-time
+    const interval = setInterval(fetchNotifications, 30_000);
+    return () => clearInterval(interval);
   }, []);
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    try {
+      await api.patch(`/notifications/${notificationId}/read`);
+      setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, read: true } : n));
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
 
   // Fetch pending account requests count (admin only), refresh every 60s
   useEffect(() => {
@@ -126,10 +146,13 @@ function Topbar({ theme, onThemeToggle }: TopbarProps) {
       <div className="flex items-center gap-6">
         <button
           onClick={onThemeToggle}
-          className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition-colors cursor-pointer"
-          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          className="p-2 rounded-lg text-gray-400 hover:text-gray-200 hover:bg-gray-800/50 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+          title={`Current Theme: ${theme.charAt(0).toUpperCase() + theme.slice(1)}. Click to switch.`}
         >
-          {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          {theme === 'blue' && <Palette size={20} className="text-primary-400" />}
+          {theme === 'white' && <Sun size={20} className="text-amber-500" />}
+          {theme === 'black' && <Moon size={20} className="text-purple-400" />}
+          <span className="text-xs font-semibold capitalize hidden sm:inline">{theme}</span>
         </button>
 
         {/* Bell icon with combined badge + hover tooltip breakdown */}
@@ -148,29 +171,57 @@ function Topbar({ theme, onThemeToggle }: TopbarProps) {
             </span>
           )}
 
-          {/* Hover tooltip — shows breakdown for admins */}
-          {showBellTooltip && isAdmin && totalBadge > 0 && (
-            <div className="absolute right-0 top-8 w-64 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-3 space-y-2 z-50 text-left pointer-events-none">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Notifications</p>
-              {unreadNotifications > 0 && (
-                <div className="flex items-center gap-2.5 text-sm">
-                  <span className="w-2 h-2 rounded-full bg-danger-500 flex-shrink-0" />
-                  <span className="text-gray-300">
-                    <span className="font-semibold text-white">{unreadNotifications}</span> unread notification{unreadNotifications !== 1 ? 's' : ''}
+          {/* Interactive Notifications List Dropdown */}
+          {showBellTooltip && (
+            <div className="absolute right-0 top-8 w-80 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-4 z-50 text-left pointer-events-auto flex flex-col gap-3 max-h-96 overflow-y-auto custom-scrollbar">
+              <div className="flex justify-between items-center pb-2 border-b border-gray-800">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Notifications</span>
+                {unreadNotifications > 0 && (
+                  <span className="text-[10px] bg-danger-500/20 text-danger-400 font-bold px-2 py-0.5 rounded-full">
+                    {unreadNotifications} New
                   </span>
-                </div>
-              )}
-              {pendingRequests > 0 && (
-                <div className="flex items-center gap-2.5 text-sm">
+                )}
+              </div>
+              <div className="space-y-2 flex-1 overflow-y-auto max-h-60 custom-scrollbar pr-0.5">
+                {notifications.length === 0 ? (
+                  <p className="text-xs text-gray-500 text-center py-6">No notifications yet.</p>
+                ) : (
+                  notifications.slice(0, 10).map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!n.read) handleMarkAsRead(n.id);
+                      }}
+                      className={`group flex flex-col p-2.5 rounded-lg border transition-all cursor-pointer ${
+                        n.read
+                          ? 'border-gray-805 bg-gray-950/20 text-gray-400'
+                          : 'border-primary-500/30 bg-primary-500/5 text-gray-200 hover:bg-primary-500/10'
+                      }`}
+                    >
+                      <p className="text-xs leading-relaxed break-words">{n.message}</p>
+                      <div className="flex justify-between items-center mt-2 pt-1 border-t border-gray-800/20">
+                        <span className="text-[9px] text-gray-500 font-mono">
+                          {new Date(n.createdAt).toLocaleDateString()}
+                        </span>
+                        {!n.read && (
+                          <span className="text-[9px] font-semibold text-primary-400 group-hover:text-primary-300 transition-colors">
+                            Mark as read
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              {isAdmin && pendingRequests > 0 && (
+                <div className="flex items-center gap-2.5 text-xs bg-amber-500/5 border border-amber-500/20 rounded-lg p-2.5 text-gray-300 mt-1">
                   <ClipboardList size={14} className="text-amber-400 flex-shrink-0" />
-                  <span className="text-gray-300">
-                    <span className="font-semibold text-amber-300">{pendingRequests}</span> pending account request{pendingRequests !== 1 ? 's' : ''}
+                  <span className="flex-1">
+                    <span className="font-semibold text-amber-300">{pendingRequests}</span> pending account requests
                   </span>
                 </div>
               )}
-              <p className="text-[10px] text-gray-600 pt-1 border-t border-gray-800">
-                Go to Admin Panel → Requests to review
-              </p>
             </div>
           )}
         </div>
@@ -181,21 +232,34 @@ function Topbar({ theme, onThemeToggle }: TopbarProps) {
 }
 
 export function Layout() {
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('theme') as 'dark' | 'light') || 'dark';
+  const [theme, setTheme] = useState<'blue' | 'white' | 'black'>(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'white' || saved === 'black' || saved === 'blue') return saved;
+    // Compatibility fallbacks for older dark/light settings
+    if (saved === 'light') return 'white';
+    if (saved === 'dark') return 'blue';
+    return 'blue';
   });
 
   useEffect(() => {
-    if (theme === 'light') {
-      document.documentElement.classList.add('light');
+    const doc = document.documentElement;
+    doc.classList.remove('theme-blue', 'theme-white', 'theme-black', 'light');
+    if (theme === 'white') {
+      doc.classList.add('theme-white', 'light');
+    } else if (theme === 'black') {
+      doc.classList.add('theme-black');
     } else {
-      document.documentElement.classList.remove('light');
+      doc.classList.add('theme-blue');
     }
     localStorage.setItem('theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    setTheme(prev => {
+      if (prev === 'blue') return 'white';
+      if (prev === 'white') return 'black';
+      return 'blue';
+    });
   };
 
   return (

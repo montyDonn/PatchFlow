@@ -82,7 +82,7 @@ public class UserController {
     public ResponseEntity<?> updateUserModules(@PathVariable String userId, @RequestBody Map<String, Object> body, HttpServletRequest req) {
         User caller = Auth.require(req);
         String callerRole = caller.getRole();
-        if (!"ADMIN".equals(callerRole)) {
+        if (!"ADMIN".equals(callerRole) && !"MANAGER".equals(callerRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Forbidden"));
         }
         @SuppressWarnings("unchecked") List<String> moduleIds = (List<String>) body.get("moduleIds");
