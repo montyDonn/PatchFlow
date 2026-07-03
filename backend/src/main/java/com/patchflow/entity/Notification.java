@@ -9,8 +9,13 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "Notification")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "Notification")
+@Table(name = "change_req_Notification")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Notification {
 
     @Id
@@ -35,11 +40,14 @@ public class Notification {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userId", insertable = false, updatable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private User user;
 
     @PrePersist
     protected void onCreate() {
-        if (this.id == null) this.id = java.util.UUID.randomUUID().toString();
-        if (this.createdAt == null) this.createdAt = Instant.now();
+        if (this.id == null)
+            this.id = java.util.UUID.randomUUID().toString();
+        if (this.createdAt == null)
+            this.createdAt = Instant.now();
     }
 }

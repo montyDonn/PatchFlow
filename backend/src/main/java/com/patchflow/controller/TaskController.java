@@ -23,7 +23,7 @@ public class TaskController {
 
     @PostMapping
     public ResponseEntity<?> createTask(@RequestBody Map<String, Object> body, HttpServletRequest req) {
-        User user = Auth.requireRole(req, "ADMIN","CLIENT","MANAGER","DEVELOPER");
+        User user = Auth.requireRole(req, "SUPER_ADMIN","CLIENT","MANAGER","DEVELOPER");
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> result = taskService.createTask(

@@ -31,6 +31,7 @@ public class AccountRequestController {
         String password = body.get("password");
         String name     = body.get("name");
         String phone    = body.get("phone");
+        String email    = body.get("email");
         String role     = body.get("role");
 
         if (username == null || username.isBlank() ||
@@ -42,7 +43,7 @@ public class AccountRequestController {
 
         try {
             return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(accountRequestService.submitRequest(username, password, name, phone, role));
+                    .body(accountRequestService.submitRequest(username, password, name, phone, email, role));
         } catch (org.springframework.web.server.ResponseStatusException ex) {
             return ResponseEntity.status(ex.getStatusCode()).body(Map.of("error", ex.getReason()));
         }
@@ -58,7 +59,7 @@ public class AccountRequestController {
     @GetMapping("/api/admin/account-requests")
     public ResponseEntity<?> listRequests(@RequestParam(required = false) String status,
                                           HttpServletRequest req) {
-        Auth.requireRole(req, "ADMIN", "SUPER_ADMIN");
+        Auth.requireRole(req, "SUPER_ADMIN");
         try {
             return ResponseEntity.ok(accountRequestService.getAllRequests(status));
         } catch (org.springframework.web.server.ResponseStatusException ex) {
@@ -73,7 +74,7 @@ public class AccountRequestController {
      */
     @PostMapping("/api/admin/account-requests/{id}/approve")
     public ResponseEntity<?> approveRequest(@PathVariable String id, HttpServletRequest req) {
-        User admin = Auth.requireRole(req, "ADMIN", "SUPER_ADMIN");
+        User admin = Auth.requireRole(req, "SUPER_ADMIN");
         try {
             return ResponseEntity.ok(accountRequestService.approveRequest(id, admin.getUserId()));
         } catch (org.springframework.web.server.ResponseStatusException ex) {
@@ -91,7 +92,7 @@ public class AccountRequestController {
     public ResponseEntity<?> rejectRequest(@PathVariable String id,
                                            @RequestBody(required = false) Map<String, String> body,
                                            HttpServletRequest req) {
-        User admin = Auth.requireRole(req, "ADMIN", "SUPER_ADMIN");
+        User admin = Auth.requireRole(req, "SUPER_ADMIN");
         String note = (body != null) ? body.get("note") : null;
         try {
             return ResponseEntity.ok(accountRequestService.rejectRequest(id, admin.getUserId(), note));

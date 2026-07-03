@@ -11,8 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "User")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "User")
+@Table(name = "change_req_User")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class User {
 
     @Id
@@ -25,9 +30,6 @@ public class User {
     @Column(name = "passwordHash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "salt", nullable = false)
-    private String salt;
-
     @Column(name = "role", nullable = false)
     private String role = "DEVELOPER";
 
@@ -36,6 +38,12 @@ public class User {
 
     @Column(name = "designation")
     private String designation;
+
+    @Column(name = "email")
+    private String email;
+
+    @Column(name = "phone")
+    private String phone;
 
     @Column(name = "previousDesignation")
     private String previousDesignation;
@@ -68,29 +76,52 @@ public class User {
     @Builder.Default
     private List<AppModule> modules = new ArrayList<>();
 
-    @OneToMany(mappedBy = "author")  @Builder.Default private List<Task> authoredTasks  = new ArrayList<>();
-    @OneToMany(mappedBy = "client")  @Builder.Default private List<Task> clientTasks     = new ArrayList<>();
-    @OneToMany(mappedBy = "approver") @Builder.Default private List<Task> approvedTasks  = new ArrayList<>();
-    @OneToMany(mappedBy = "deployer") @Builder.Default private List<Task> deployedTasks  = new ArrayList<>();
-    @OneToMany(mappedBy = "verifier") @Builder.Default private List<Task> verifiedTasks  = new ArrayList<>();
-    @OneToMany(mappedBy = "assignee") @Builder.Default private List<Task> assignedTasks  = new ArrayList<>();
+    @OneToMany(mappedBy = "author")
+    @Builder.Default
+    private List<Task> authoredTasks = new ArrayList<>();
+    @OneToMany(mappedBy = "client")
+    @Builder.Default
+    private List<Task> clientTasks = new ArrayList<>();
+    @OneToMany(mappedBy = "approver")
+    @Builder.Default
+    private List<Task> approvedTasks = new ArrayList<>();
+    @OneToMany(mappedBy = "deployer")
+    @Builder.Default
+    private List<Task> deployedTasks = new ArrayList<>();
+    @OneToMany(mappedBy = "verifier")
+    @Builder.Default
+    private List<Task> verifiedTasks = new ArrayList<>();
+    @OneToMany(mappedBy = "assignee")
+    @Builder.Default
+    private List<Task> assignedTasks = new ArrayList<>();
 
-    @ManyToMany(mappedBy = "managers")   @Builder.Default private List<Task> managedTasks    = new ArrayList<>();
-    @ManyToMany(mappedBy = "developers") @Builder.Default private List<Task> developerTasks  = new ArrayList<>();
-    @ManyToMany(mappedBy = "verifiers")  @Builder.Default private List<Task> verifierTasks   = new ArrayList<>();
+    @ManyToMany(mappedBy = "managers")
+    @Builder.Default
+    private List<Task> managedTasks = new ArrayList<>();
+    @ManyToMany(mappedBy = "developers")
+    @Builder.Default
+    private List<Task> developerTasks = new ArrayList<>();
+    @ManyToMany(mappedBy = "verifiers")
+    @Builder.Default
+    private List<Task> verifierTasks = new ArrayList<>();
 
     @OneToMany(mappedBy = "manager", cascade = CascadeType.ALL)
-    @Builder.Default private List<UserManager> managerAssignments = new ArrayList<>();
+    @Builder.Default
+    private List<UserManager> managerAssignments = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    @Builder.Default private List<UserManager> userAssignments    = new ArrayList<>();
+    @Builder.Default
+    private List<UserManager> userAssignments = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
-        if (this.userId == null) this.userId = java.util.UUID.randomUUID().toString();
+        if (this.userId == null)
+            this.userId = java.util.UUID.randomUUID().toString();
         this.updatedAt = Instant.now();
     }
 
     @PreUpdate
-    protected void onUpdate() { this.updatedAt = Instant.now(); }
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

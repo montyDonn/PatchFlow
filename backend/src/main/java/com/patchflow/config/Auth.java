@@ -34,6 +34,6 @@ public class Auth {
     }
 
     public static boolean isAdmin(String role) {
-        return "ADMIN".equals(role);
+        return "SUPER_ADMIN".equals(role);
     }
 }

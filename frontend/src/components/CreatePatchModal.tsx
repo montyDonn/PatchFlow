@@ -109,7 +109,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
       .finally(() => setLoading(false));
   }, [open]);
 
-  const managerUsers   = users.filter((u) => u.role === 'MANAGER' || u.role === 'ADMIN' || u.role === 'SUPER_ADMIN');
+  const managerUsers   = users.filter((u) => u.role === 'MANAGER' || u.role === 'SUPER_ADMIN');
   const developerUsers = users.filter((u) => u.role === 'DEVELOPER');
   const verifierUsers  = users.filter((u) => u.role === 'VERIFIER');
   const clientUsers    = users.filter((u) => u.role === 'CLIENT');
@@ -262,9 +262,9 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl rounded-3xl border border-gray-700 bg-gray-950/95 p-6 shadow-2xl text-white max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div className="relative w-[95vw] md:max-w-2xl lg:max-w-4xl rounded-3xl border border-gray-700 bg-gray-950/95 p-4 sm:p-6 shadow-2xl text-white max-h-[95vh] overflow-y-auto custom-scrollbar">
         <div className="flex items-center justify-between gap-4 mb-6">
           <div>
             <div className="text-xs uppercase tracking-[0.24em] text-primary-400/80">Change Management</div>
@@ -285,8 +285,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
         <form className="space-y-5" onSubmit={handleSubmit}>
           {error && <div className="rounded-2xl border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm text-danger-200">{error}</div>}
 
-          {/* Change Name & Module */}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             <label className="space-y-2 text-sm text-gray-400">
               Change Name *
               <input
@@ -339,7 +338,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
  
           {/* Client Assignment & Phone */}
           {!isInternal && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               {!isClient ? (
                 <label className="space-y-2 text-sm text-gray-400">
                   Client Assignment (Optional)
@@ -399,7 +398,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
           </div>
 
           {/* Dates */}
-          <div className={`grid gap-4 ${isClient ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
+          <div className={`grid gap-4 grid-cols-1 ${isClient ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
             <label className="space-y-2 text-sm text-gray-400">
               Date Given *
               <input
@@ -449,7 +448,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
           <div className="border-t border-gray-850 pt-4 space-y-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-primary-400">Change Description</h3>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               <label className="space-y-2 text-sm text-gray-400">
                 Description Title *
                 <input

@@ -106,7 +106,7 @@ export default function ModuleAssignmentsPage() {
           </div>
 
           <div className="mt-4 overflow-x-auto rounded-3xl border border-gray-800 bg-gray-900/80">
-            <table className="min-w-full text-sm text-left text-gray-200">
+            <table className="min-w-full text-sm text-left text-gray-200 whitespace-nowrap">
               <thead className="bg-gray-950/80 text-gray-400">
                 <tr>
                   <th className="px-4 py-3">User</th>

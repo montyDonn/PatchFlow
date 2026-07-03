@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,6 +22,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/modules")
 @RequiredArgsConstructor
 public class ModuleController {
+
+
 
     private final AppModuleRepository moduleRepository;
     private final ProjectRepository projectRepository;
@@ -55,6 +58,7 @@ public class ModuleController {
     @GetMapping
     @Transactional(readOnly = true)
     public ResponseEntity<?> getModules(@RequestParam(defaultValue = "false") boolean includeUsers, HttpServletRequest req) {
+
         Auth.require(req);
         List<AppModule> modules = moduleRepository.findAllByOrderByModuleNameAsc();
         return ResponseEntity.ok(modules.stream().map(this::serialize).collect(Collectors.toList()));
@@ -63,7 +67,7 @@ public class ModuleController {
     @GetMapping("/hierarchy")
     @Transactional(readOnly = true)
     public ResponseEntity<?> getHierarchy(HttpServletRequest req) {
-        Auth.requireRole(req, "ADMIN");
+        Auth.requireRole(req, "SUPER_ADMIN");
         List<AppModule> modules = moduleRepository.findAllByOrderByModuleNameAsc();
         List<Map<String, Object>> result = modules.stream().map(m -> {
             List<Map<String, Object>> assignments = m.getUsers().stream().map(u ->
@@ -95,7 +99,7 @@ public class ModuleController {
 
     @PostMapping
     public ResponseEntity<?> createModule(@RequestBody Map<String, String> body, HttpServletRequest req) {
-        Auth.requireRole(req, "ADMIN");
+        Auth.requireRole(req, "SUPER_ADMIN");
         String name = body.get("name");
         if (name == null || name.isBlank()) return ResponseEntity.badRequest().body(Map.of("error", "Module name is required"));
         if (moduleRepository.existsByModuleName(name)) return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Module name must be unique"));
@@ -108,7 +112,7 @@ public class ModuleController {
 
     @PatchMapping("/{moduleId}")
     public ResponseEntity<?> updateModule(@PathVariable String moduleId, @RequestBody Map<String, Object> body, HttpServletRequest req) {
-        Auth.requireRole(req, "ADMIN");
+        Auth.requireRole(req, "SUPER_ADMIN");
         AppModule m = moduleRepository.findById(moduleId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND, "Module not found"));
         if (body.containsKey("name") && body.get("name") != null) m.setModuleName((String) body.get("name"));
@@ -119,15 +123,14 @@ public class ModuleController {
 
     @DeleteMapping("/{moduleId}")
     public ResponseEntity<?> deleteModule(@PathVariable String moduleId, HttpServletRequest req) {
-        Auth.requireRole(req, "ADMIN");
+        Auth.requireRole(req, "SUPER_ADMIN");
         AppModule m = moduleRepository.findById(moduleId)
                 .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND, "Module not found"));
         long taskCount = taskRepository.countByModuleIdAndLifecycleStatusLessThan(moduleId, 100);
         if (taskCount > 0) return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "Cannot delete module: " + taskCount + " active patch(es) are linked to it. Deactivate the module instead."));
-        m.getUsers().clear();
+        m.setActive(false);
         moduleRepository.save(m);
-        moduleRepository.delete(m);
         return ResponseEntity.ok(Map.of("success", true));
     }
 }

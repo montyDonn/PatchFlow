@@ -6,7 +6,6 @@ CREATE TABLE "AccountRequest" (
     "id"           VARCHAR(36)  NOT NULL DEFAULT gen_random_uuid()::TEXT,
     "username"     VARCHAR(255) NOT NULL,
     "passwordHash" VARCHAR(255) NOT NULL,
-    "salt"         VARCHAR(255) NOT NULL DEFAULT 'BCrypt',
     "name"         VARCHAR(255) NOT NULL,
     "phone"        VARCHAR(20),
     "role"         VARCHAR(50)  NOT NULL DEFAULT 'CLIENT',

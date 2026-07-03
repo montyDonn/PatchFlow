@@ -62,7 +62,6 @@ const COLUMNS = [
 export default function PatchBoardPage() {
   const currentUser = useAuthStore((state) => state.user);
   const canCreatePatch = currentUser?.role === 'SUPER_ADMIN' ||
-                         currentUser?.role === 'ADMIN' ||
                          currentUser?.role === 'MANAGER' ||
                          currentUser?.role === 'DEVELOPER' ||
                          currentUser?.role === 'CLIENT';
@@ -132,8 +131,8 @@ export default function PatchBoardPage() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 bg-gray-800/40 p-3 rounded-xl border border-gray-700/50">
-          <div className="flex-1 min-w-[200px] relative">
+        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 bg-gray-800/40 p-3 rounded-xl border border-gray-700/50">
+          <div className="w-full sm:flex-1 relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               type="text"
@@ -144,12 +143,12 @@ export default function PatchBoardPage() {
             />
           </div>
           
-          <div className="flex items-center gap-2">
-            <Filter size={16} className="text-gray-400" />
+          <div className="w-full sm:w-auto flex items-center gap-2">
+            <Filter size={16} className="text-gray-400 hidden sm:block" />
             <select 
               value={selectedModule}
               onChange={(e) => setSelectedModule(e.target.value)}
-              className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500 transition-colors"
+              className="w-full sm:w-auto bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500 transition-colors"
             >
               <option value="">All Modules</option>
               {modules.map(m => (
@@ -158,11 +157,11 @@ export default function PatchBoardPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="w-full sm:w-auto flex items-center gap-2">
             <select 
               value={selectedAssignee}
               onChange={(e) => setSelectedAssignee(e.target.value)}
-              className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500 transition-colors"
+              className="w-full sm:w-auto bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500 transition-colors"
             >
               <option value="">All Assignees</option>
               {users.map(u => (
@@ -170,13 +169,13 @@ export default function PatchBoardPage() {
               ))}
             </select>
           </div>
-          {(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') && (
-            <label className="inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-300">
+          {currentUser?.role === 'SUPER_ADMIN' && (
+            <label className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-gray-300 cursor-pointer">
               <input
                 type="checkbox"
                 checked={includeDeleted}
                 onChange={(e) => setIncludeDeleted(e.target.checked)}
-                className="accent-primary-500"
+                className="accent-primary-500 cursor-pointer"
               />
               Show deleted
             </label>

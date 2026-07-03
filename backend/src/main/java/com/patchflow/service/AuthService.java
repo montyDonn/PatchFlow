@@ -53,13 +53,10 @@ public class AuthService {
         }
 
         String hash = passwordEncoder.encode(password);
-        // salt is stored for schema compat but BCrypt embeds salt in the hash
-        String salt = BCryptPasswordEncoder.class.getSimpleName();
 
         User user = User.builder()
                 .username(username)
                 .passwordHash(hash)
-                .salt(salt)
                 .name(name)
                 .role(role != null ? role : "DEVELOPER")
                 .isActive(true)
@@ -87,7 +84,11 @@ public class AuthService {
         Map<String, Object> userMap = new HashMap<>();
         userMap.put("userId", user.getUserId());
         userMap.put("username", user.getUsername());
+        userMap.put("name", user.getName());
         userMap.put("role", user.getRole());
+        userMap.put("designation", user.getDesignation());
+        userMap.put("email", user.getEmail());
+        userMap.put("phone", user.getPhone());
 
         Map<String, Object> result = new HashMap<>();
         result.put("user", userMap);

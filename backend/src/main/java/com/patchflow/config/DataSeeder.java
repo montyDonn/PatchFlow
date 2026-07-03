@@ -7,8 +7,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
  
 @Component
+@Profile({"dev", "local"})
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
  
@@ -20,6 +23,9 @@ public class DataSeeder implements CommandLineRunner {
     private final TaskRepository taskRepository;
     private final StatusHistoryRepository statusHistoryRepository;
     private final AuditLogRepository auditLogRepository;
+
+    @Value("${app.upload-dir:./uploads}")
+    private String uploadDir;
  
     /** Seed a user only if it doesn't already exist. */
     private void seedUser(String username, String name, String role, String designation, String password) {
@@ -28,7 +34,6 @@ public class DataSeeder implements CommandLineRunner {
             u = User.builder()
                     .username(username)
                     .passwordHash(passwordEncoder.encode(password))
-                    .salt("BCrypt")
                     .role(role)
                     .name(name)
                     .designation(designation)
@@ -58,7 +63,7 @@ public class DataSeeder implements CommandLineRunner {
 
     private void createDummyAttachmentFile(String folderName, String fileName, String content) {
         try {
-            java.io.File dir = new java.io.File("uploads/" + folderName);
+            java.io.File dir = new java.io.File(uploadDir, folderName);
             if (!dir.exists()) {
                 dir.mkdirs();
             }
@@ -71,6 +76,8 @@ public class DataSeeder implements CommandLineRunner {
  
     @Override
     public void run(String... args) throws Exception {
+
+
         // Skip seeder if running within JUnit tests to prevent multiple execution logs during maven build
         boolean isTest = java.util.Arrays.stream(Thread.currentThread().getStackTrace())
                 .anyMatch(element -> element.getClassName().startsWith("org.junit."));
@@ -88,7 +95,7 @@ public class DataSeeder implements CommandLineRunner {
             jdbcTemplate.execute("DELETE FROM \"_TaskDevelopers\"");
             jdbcTemplate.execute("DELETE FROM \"_TaskVerifiers\"");
             jdbcTemplate.execute("DELETE FROM \"Task\"");
-            System.out.println("Cleared all existing tasks and comments successfully.");
+
         } catch (Exception e) {
             System.err.println("Error clearing task tables: " + e.getMessage());
         }
@@ -130,7 +137,7 @@ public class DataSeeder implements CommandLineRunner {
         });
  
         // ── System admin ──────────────────────────────────────────────────────
-        seedUser("admin", "System Admin", "ADMIN", "System Administrator", "upcl@123");
+        seedUser("admin", "System Admin", "SUPER_ADMIN", "System Administrator", "upcl@123");
  
         // ── Demo users for client demo ────────────────────────────────────────
         // Credentials: username / upcl@123
@@ -156,7 +163,7 @@ public class DataSeeder implements CommandLineRunner {
         seedUser("verifier1",      "Verifier 1",     "VERIFIER", "QA Engineer", "upcl@123");
  
         // ── Legacy demo accounts ──────────────────────────────────────────────
-        seedUser("superadmin1",  "Super Admin 1",  "ADMIN",       "Administrator",         "upcl@123");
+        seedUser("superadmin1",  "Super Admin 1",  "SUPER_ADMIN",       "Administrator",         "upcl@123");
         seedUser("admin1",       "Admin 1",        "VIEWER",      "Viewer Profile",        "upcl@123");
         seedUser("client1",      "Client 1",       "CLIENT",      "Client Profile",        "upcl@123");
         seedUser("upclviewer1",  "UPCL Viewer 1",   "UPCL_VIEWER", "UPCL Client Viewer",    "upcl@123");
@@ -168,11 +175,9 @@ public class DataSeeder implements CommandLineRunner {
         userRepository.findAll().forEach(user -> {
             user.setPasswordHash(defaultHash);
             
-            // Force the primary admin account and superadmin1 to ADMIN role
+            // Force the primary admin account and superadmin1 to SUPER_ADMIN role
             if ("admin".equals(user.getUsername()) || "superadmin1".equals(user.getUsername())) {
-                user.setRole("ADMIN");
-            } else if ("SUPER_ADMIN".equals(user.getRole())) {
-                user.setRole("ADMIN");
+                user.setRole("SUPER_ADMIN");
             } else if ("ADMIN".equals(user.getRole())) {
                 user.setRole("VIEWER");
             }
@@ -182,7 +187,7 @@ public class DataSeeder implements CommandLineRunner {
         */
 
         // ── Seed test tasks ──────────────────────────────────────────────────
-        System.out.println("DEBUG: Seeder retrieving users and modules...");
+
         User komalUser = userRepository.findByUsername("komal").orElse(null);
         User client1User = userRepository.findByUsername("client1").orElse(null);
         User abhishekRishiUser = userRepository.findByUsername("abhishek_rishi").orElse(null);
@@ -202,7 +207,7 @@ public class DataSeeder implements CommandLineRunner {
         AppModule cscModule = moduleRepository.findByModuleName("CSC").orElse(null);
         AppModule meteringModule = moduleRepository.findByModuleName("METERING").orElse(null);
 
-        System.out.println("DEBUG: komalUser=" + komalUser + ", client1User=" + client1User + ", nscModule=" + nscModule);
+
 
         java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd");
         String prefix = java.time.LocalDate.now().format(formatter);
@@ -671,6 +676,6 @@ public class DataSeeder implements CommandLineRunner {
                     .build());
         }
 
-        System.out.println("Database users and modules successfully seeded and verified.");
+
     }
 }

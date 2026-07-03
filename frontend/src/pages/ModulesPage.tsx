@@ -154,7 +154,7 @@ export default function ModulesPage() {
       </form>
 
       <div className="overflow-x-auto rounded-3xl border border-gray-700 bg-gray-950/80">
-        <table className="min-w-full divide-y divide-gray-700 text-sm text-left">
+        <table className="min-w-full divide-y divide-gray-700 text-sm text-left whitespace-nowrap">
           <thead className="bg-gray-900/60 text-gray-400">
             <tr>
               <th className="px-4 py-3">Module</th>
@@ -178,7 +178,7 @@ export default function ModulesPage() {
                     <div className="font-semibold text-white">{module.name}</div>
                   )}
                 </td>
-                <td className="px-4 py-4 align-top">
+                <td className="px-4 py-4 align-top whitespace-normal min-w-[200px]">
                   {editingId === module.id ? (
                     <textarea
                       value={editDescription}

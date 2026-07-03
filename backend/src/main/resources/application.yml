@@ -2,10 +2,22 @@ spring:
   application:
     name: patchflow-api
 
+  mail:
+    host: ${SPRING_MAIL_HOST:10.1.2.50}
+    port: ${SPRING_MAIL_PORT:25}
+    username: ${SPRING_MAIL_USERNAME:info@upcl.org}
+    password: ${SPRING_MAIL_PASSWORD:your_mail_password_here}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: false
+
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-old-art-abe53zun-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require&stringtype=unspecified}
-    username: ${SPRING_DATASOURCE_USERNAME:neondb_owner}
-    password: ${SPRING_DATASOURCE_PASSWORD:npg_Xm8uYBbDdV0a}
+    url: jdbc:postgresql://10.1.2.24:5432/postgres?sslmode=disable
+    username: ps_user
+    password: ${SPRING_DATASOURCE_PASSWORD:Upcl@2602}
     driver-class-name: org.postgresql.Driver
 
     hikari:
@@ -40,7 +52,7 @@ spring:
       max-request-size: 25MB
 
 server:
-  port: ${PORT:8080}
+  port: ${PORT:5001}
 
   error:
     include-message: always
@@ -51,6 +63,14 @@ app:
 
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+  whatsapp:
+    url: ${WHATSAPP_API_URL:https://mediaapi.smsgupshup.com/GatewayAPI/rest?}
+    userid: ${WHATSAPP_USER_ID:2000251687}
+    password: ${WHATSAPP_PASSWORD:your_whatsapp_password_here}
+
+  sms:
+    metering-url: ${METERING_SERVICE_URL:http://10.1.2.60:8080/metering/SmsStack}
 
 logging:
   level:

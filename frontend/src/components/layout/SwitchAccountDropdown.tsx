@@ -4,7 +4,7 @@ import api from '../../api/client';
 import { ChevronDown, Check, UserCircle2, Search, KeyRound } from 'lucide-react';
 
 const ROLE_GROUPS = [
-  { label: 'SUPER_ADMIN / ADMIN', roles: ['SUPER_ADMIN', 'ADMIN'] },
+  { label: 'SUPER_ADMIN', roles: ['SUPER_ADMIN'] },
   { label: 'MANAGERS', roles: ['MANAGER'] },
   { label: 'DEVELOPERS', roles: ['DEVELOPER'] },
   { label: 'VERIFIERS', roles: ['VERIFIER'] },
@@ -27,7 +27,7 @@ export function SwitchAccountDropdown() {
 
   // Fallback default list using the correct "upcl@123" password
   const defaultAccounts = useMemo(() => [
-    { username: 'superadmin1', name: 'Super Admin 1', role: 'ADMIN', pwd: 'upcl@123', moduleCount: 12 },
+    { username: 'superadmin1', name: 'Super Admin 1', role: 'SUPER_ADMIN', pwd: 'upcl@123', moduleCount: 12 },
     { username: 'admin1', name: 'Admin 1', role: 'VIEWER', pwd: 'upcl@123', moduleCount: 5 },
     { username: 'manager1', name: 'Manager 1', role: 'MANAGER', pwd: 'upcl@123', moduleCount: 4 },
     { username: 'developer1', name: 'Developer 1', role: 'DEVELOPER', pwd: 'upcl@123', moduleCount: 2 },

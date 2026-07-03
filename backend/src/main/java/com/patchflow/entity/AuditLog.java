@@ -9,8 +9,13 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 
 @Entity
-@Table(name = "AuditLog")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "AuditLog")
+@Table(name = "change_req_AuditLog")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AuditLog {
 
     @Id
@@ -56,7 +61,9 @@ public class AuditLog {
 
     @PrePersist
     protected void onCreate() {
-        if (this.logId == null) this.logId = java.util.UUID.randomUUID().toString();
-        if (this.changedAt == null) this.changedAt = Instant.now();
+        if (this.logId == null)
+            this.logId = java.util.UUID.randomUUID().toString();
+        if (this.changedAt == null)
+            this.changedAt = Instant.now();
     }
 }

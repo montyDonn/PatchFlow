@@ -8,8 +8,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "Team")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "Team")
+@Table(name = "change_req_Team")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Team {
 
     @Id
@@ -29,7 +34,9 @@ public class Team {
 
     @PrePersist
     protected void onCreate() {
-        if (this.id == null) this.id = java.util.UUID.randomUUID().toString();
-        if (this.createdAt == null) this.createdAt = Instant.now();
+        if (this.id == null)
+            this.id = java.util.UUID.randomUUID().toString();
+        if (this.createdAt == null)
+            this.createdAt = Instant.now();
     }
 }

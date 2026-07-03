@@ -5,14 +5,22 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import lombok.*;
+import org.hibernate.annotations.SQLDeleteAll;
+import org.hibernate.annotations.SQLInsert;
+import org.hibernate.annotations.Where;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "Task")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "Task")
+@Table(name = "change_req_Task")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Task {
 
     @Id
@@ -128,29 +136,20 @@ public class Task {
     // ── Many-to-many ─────────────────────────────────────────────────────────
 
     @ManyToMany
-    @JoinTable(
-        name = "_TaskManagers",
-        joinColumns = @JoinColumn(name = "A"),
-        inverseJoinColumns = @JoinColumn(name = "B")
-    )
+    @JoinTable(name = "change_req_TaskManagers", joinColumns = @JoinColumn(name = "A"), inverseJoinColumns = @JoinColumn(name = "B"))
+
     @Builder.Default
     private List<User> managers = new ArrayList<>();
 
     @ManyToMany
-    @JoinTable(
-        name = "_TaskDevelopers",
-        joinColumns = @JoinColumn(name = "A"),
-        inverseJoinColumns = @JoinColumn(name = "B")
-    )
+    @JoinTable(name = "change_req_TaskDevelopers", joinColumns = @JoinColumn(name = "A"), inverseJoinColumns = @JoinColumn(name = "B"))
+
     @Builder.Default
     private List<User> developers = new ArrayList<>();
 
     @ManyToMany
-    @JoinTable(
-        name = "_TaskVerifiers",
-        joinColumns = @JoinColumn(name = "A"),
-        inverseJoinColumns = @JoinColumn(name = "B")
-    )
+    @JoinTable(name = "change_req_TaskVerifiers", joinColumns = @JoinColumn(name = "A"), inverseJoinColumns = @JoinColumn(name = "B"))
+
     @Builder.Default
     private List<User> verifiers = new ArrayList<>();
 
@@ -176,11 +175,15 @@ public class Task {
 
     @PrePersist
     protected void onCreate() {
-        if (this.id == null) this.id = java.util.UUID.randomUUID().toString();
-        if (this.createdAt == null) this.createdAt = Instant.now();
+        if (this.id == null)
+            this.id = java.util.UUID.randomUUID().toString();
+        if (this.createdAt == null)
+            this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
     }
 
     @PreUpdate
-    protected void onUpdate() { this.updatedAt = Instant.now(); }
+    protected void onUpdate() {
+        this.updatedAt = Instant.now();
+    }
 }

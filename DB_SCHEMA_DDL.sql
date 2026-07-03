@@ -17,13 +17,14 @@ CREATE TABLE IF NOT EXISTS "User" (
     "userId"              VARCHAR(36)              NOT NULL,
     "username"            VARCHAR(50)              NOT NULL,
     "passwordHash"        VARCHAR(72)              NOT NULL,
-    "salt"                VARCHAR(72)              NOT NULL,
     "role"                VARCHAR(30)              NOT NULL DEFAULT 'DEVELOPER',
     "name"                VARCHAR(100)             NOT NULL,
     "designation"         VARCHAR(100),
     "previousDesignation" VARCHAR(100),
     "isActive"            BOOLEAN                  NOT NULL DEFAULT TRUE,
     "createdBy"           VARCHAR(36),
+    "email"               VARCHAR(255),
+    "phone"               VARCHAR(50),
     "createdAt"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     "updatedAt"           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT "User_pkey"           PRIMARY KEY ("userId"),
@@ -60,9 +61,9 @@ CREATE TABLE IF NOT EXISTS "AccountRequest" (
     "id"           VARCHAR(36)              NOT NULL,
     "username"     VARCHAR(50)              NOT NULL,
     "passwordHash" VARCHAR(72)              NOT NULL,
-    "salt"         VARCHAR(72)              NOT NULL,
     "name"         VARCHAR(100)             NOT NULL,
     "phone"        VARCHAR(20),
+    "email"        VARCHAR(255),
     "role"         VARCHAR(20)              NOT NULL,
     "status"       VARCHAR(10)              NOT NULL DEFAULT 'PENDING',
     "reviewedBy"   VARCHAR(36),
@@ -231,3 +232,5 @@ CREATE TABLE IF NOT EXISTS "_UserModules" (
     CONSTRAINT "_UserModules_B_fkey" FOREIGN KEY ("B") REFERENCES "User"("userId") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS "_UserModules_B_idx" ON "_UserModules"("B");
+
+

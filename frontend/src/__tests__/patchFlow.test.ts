@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:8080/api';
+const BASE_URL = 'http://localhost:5001/api';
 
 describe('End-to-End Patch Flow Lifecycle', () => {
   it('should create a patch flow and move it across all stages successfully', async () => {

@@ -11,6 +11,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.util.List;
+import java.util.Collections;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +34,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AuthTokenFilter extends OncePerRequestFilter {
 
+    
+
     public static final String USER_ATTR = "authenticatedUser";
 
     private final SessionRepository sessionRepository;
@@ -43,7 +50,7 @@ public class AuthTokenFilter extends OncePerRequestFilter {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             String tokenHash = sha256(token);
-
+            
             Optional<Session> sessionOpt = sessionRepository.findByTokenHash(tokenHash);
             if (sessionOpt.isPresent()) {
                 Session session = sessionOpt.get();
@@ -51,6 +58,14 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                     Optional<User> userOpt = userRepository.findById(session.getUserId());
                     if (userOpt.isPresent() && userOpt.get().isActive()) {
                         User user = userOpt.get();
+
+                        // Populate Spring Security context so that .anyRequest().authenticated() passes
+                        List<SimpleGrantedAuthority> authorities = Collections.singletonList(
+                                new SimpleGrantedAuthority("ROLE_" + user.getRole()));
+                        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                                user, null, authorities);
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+
                         request.setAttribute(USER_ATTR, user);
                         // Fire-and-forget cleanup of expired sessions
                         try {

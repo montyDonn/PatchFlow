@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jboss-deployment-structure xmlns="urn:jboss:deployment-structure:1.2">
+    <deployment>
+        <!-- Exclude WildFly's container JPA integration so our packaged Hibernate engine is utilized -->
+        <exclude-subsystems>
+            <subsystem name="jpa"/>
+        </exclude-subsystems>
+        <dependencies>
+            <!-- Add default dependencies if any container-specific modules are needed -->
+        </dependencies>
+    </deployment>
+</jboss-deployment-structure>

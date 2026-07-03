@@ -413,7 +413,7 @@ export function Login() {
         </div>
 
         {/* Logo / heading */}
-        <div className="sm:mx-auto sm:w-full sm:max-w-md relative">
+        <div className="w-[90vw] mx-auto sm:w-full sm:max-w-md relative">
           <div className="flex justify-center items-center gap-3">
             <img src={logo} alt="Logo" className="w-14 h-14 object-contain rounded-2xl" />
             <h1 className="text-3xl font-extrabold text-white tracking-tight">
@@ -426,7 +426,7 @@ export function Login() {
         </div>
 
         {/* Card */}
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative">
+        <div className="mt-8 w-[90vw] mx-auto sm:w-full sm:max-w-md relative">
           <div className="glass-card py-8 px-6 sm:rounded-2xl border border-gray-800">
             <h2 className="text-center text-xl font-bold text-white mb-6">
               Sign in to your account

@@ -9,8 +9,13 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "UserManager")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "UserManager")
+@Table(name = "change_req_UserManager")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UserManager {
 
     @Id
@@ -27,6 +32,12 @@ public class UserManager {
     @Column(name = "assignedAt", nullable = false, updatable = false)
     private Instant assignedAt = Instant.now();
 
+    @Builder.Default
+    // @Column(name = "isActive", nullable = false)
+    // private boolean isActive = true;
+    @Column(name = "isactive", nullable = false)
+    private boolean isActive = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "managerId", insertable = false, updatable = false)
     private User manager;
@@ -37,7 +48,9 @@ public class UserManager {
 
     @PrePersist
     protected void onCreate() {
-        if (this.id == null) this.id = java.util.UUID.randomUUID().toString();
-        if (this.assignedAt == null) this.assignedAt = Instant.now();
+        if (this.id == null)
+            this.id = java.util.UUID.randomUUID().toString();
+        if (this.assignedAt == null)
+            this.assignedAt = Instant.now();
     }
 }

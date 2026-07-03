@@ -31,7 +31,7 @@ public class AccountRequestService {
 
     @Transactional
     public Map<String, Object> submitRequest(String username, String password,
-                                             String name, String phone, String role) {
+                                             String name, String phone, String email, String role) {
         // Validate role — only CLIENT and VIEWER allowed via public signup
         if (role == null || !ALLOWED_ROLES.contains(role.toUpperCase())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -53,9 +53,9 @@ public class AccountRequestService {
         AccountRequest request = AccountRequest.builder()
                 .username(username)
                 .passwordHash(hash)
-                .salt("BCrypt")
                 .name(name)
                 .phone(phone)
+                .email(email)
                 .role(role.toUpperCase())
                 .status("PENDING")
                 .build();
@@ -104,9 +104,9 @@ public class AccountRequestService {
         User user = User.builder()
                 .username(req.getUsername())
                 .passwordHash(req.getPasswordHash())
-                .salt(req.getSalt())
                 .name(req.getName())
-                .designation(req.getPhone() != null ? "Phone: " + req.getPhone() : null)
+                .phone(req.getPhone())
+                .email(req.getEmail())
                 .role(req.getRole())
                 .isActive(true)
                 .createdBy(adminUserId)
@@ -161,6 +161,7 @@ public class AccountRequestService {
         m.put("username", r.getUsername());
         m.put("name", r.getName());
         m.put("phone", r.getPhone());
+        m.put("email", r.getEmail());
         m.put("role", r.getRole());
         m.put("status", r.getStatus());
         m.put("reviewedBy", r.getReviewedBy());

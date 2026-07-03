@@ -471,7 +471,7 @@ export default function ReportsPage() {
               <p className="text-xs text-gray-500 mt-1">Try resetting presets or searching for different criteria.</p>
             </div>
           ) : (
-            <table className="w-full border-collapse text-left text-xs">
+            <table className="w-full border-collapse text-left text-xs whitespace-nowrap">
               <thead className="bg-gray-950 text-gray-400 font-semibold uppercase tracking-wider border-b border-gray-800">
                 <tr>
                   <th className="px-4 py-4 w-8"></th>

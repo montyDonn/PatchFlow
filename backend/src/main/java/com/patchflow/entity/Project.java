@@ -11,8 +11,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "Project")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "Project")
+@Table(name = "change_req_Project")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+
 public class Project {
 
     @Id
@@ -38,7 +44,9 @@ public class Project {
 
     @PrePersist
     protected void onCreate() {
-        if (this.projectId == null) this.projectId = java.util.UUID.randomUUID().toString();
-        if (this.createdAt == null) this.createdAt = Instant.now();
+        if (this.projectId == null)
+            this.projectId = java.util.UUID.randomUUID().toString();
+        if (this.createdAt == null)
+            this.createdAt = Instant.now();
     }
 }

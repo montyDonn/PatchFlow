@@ -10,6 +10,7 @@ import ResourceHierarchyPage from './pages/ResourceHierarchyPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import ReportsPage from './pages/ReportsPage';
 import AdminPage from './pages/AdminPage';
+import SettingsPage from './pages/SettingsPage';
 import { useAuthStore } from './store/authStore';
 
 const ProtectedRoute = ({ children }: { children: any }) => {
@@ -23,7 +24,7 @@ const ProtectedRoute = ({ children }: { children: any }) => {
 const AdminRoute = ({ children }: { children: any }) => {
   const user = useAuthStore((state) => state.user);
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'SUPER_ADMIN' && user.role !== 'ADMIN') {
+  if (user.role !== 'SUPER_ADMIN') {
     return <Navigate to="/" replace />;
   }
   return children;
@@ -45,6 +46,7 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="patches" element={
             <ErrorBoundary fallbackTitle="Patch Board Error">
               <PatchBoardPage />

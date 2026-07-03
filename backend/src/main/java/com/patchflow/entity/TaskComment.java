@@ -10,8 +10,13 @@ import java.time.Instant;
 import java.util.List;
 
 @Entity
-@Table(name = "TaskComment")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "TaskComment")
+@Table(name = "change_req_TaskComment")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class TaskComment {
 
     @Id
@@ -51,7 +56,9 @@ public class TaskComment {
 
     @PrePersist
     protected void onCreate() {
-        if (this.id == null) this.id = java.util.UUID.randomUUID().toString();
-        if (this.createdAt == null) this.createdAt = Instant.now();
+        if (this.id == null)
+            this.id = java.util.UUID.randomUUID().toString();
+        if (this.createdAt == null)
+            this.createdAt = Instant.now();
     }
 }

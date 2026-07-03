@@ -9,8 +9,13 @@ import lombok.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "StatusHistory")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "StatusHistory")
+@Table(name = "change_req_StatusHistory")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class StatusHistory {
 
     @Id
@@ -55,7 +60,9 @@ public class StatusHistory {
 
     @PrePersist
     protected void onCreate() {
-        if (this.id == null) this.id = java.util.UUID.randomUUID().toString();
-        if (this.createdAt == null) this.createdAt = Instant.now();
+        if (this.id == null)
+            this.id = java.util.UUID.randomUUID().toString();
+        if (this.createdAt == null)
+            this.createdAt = Instant.now();
     }
 }

@@ -11,8 +11,13 @@ import java.time.Instant;
  * An admin must approve or reject before a real User account is created.
  */
 @Entity
-@Table(name = "AccountRequest")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "AccountRequest")
+@Table(name = "change_req_AccountRequest")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AccountRequest {
 
     @Id
@@ -25,14 +30,14 @@ public class AccountRequest {
     @Column(name = "passwordHash", nullable = false)
     private String passwordHash;
 
-    @Column(name = "salt", nullable = false)
-    private String salt;
-
     @Column(name = "name", nullable = false)
     private String name;
 
     @Column(name = "phone", length = 20)
     private String phone;
+
+    @Column(name = "email")
+    private String email;
 
     /** Only CLIENT or VIEWER allowed via public signup. */
     @Column(name = "role", nullable = false)
@@ -59,8 +64,9 @@ public class AccountRequest {
 
     @PrePersist
     protected void onCreate() {
-        if (this.id == null) this.id = java.util.UUID.randomUUID().toString();
-        if (this.status == null) this.status = "PENDING";
-        if (this.salt == null) this.salt = "BCrypt";
+        if (this.id == null)
+            this.id = java.util.UUID.randomUUID().toString();
+        if (this.status == null)
+            this.status = "PENDING";
     }
 }

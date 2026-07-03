@@ -34,7 +34,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> body, HttpServletRequest req) {
-        Auth.requireRole(req, "ADMIN");
+        Auth.requireRole(req, "SUPER_ADMIN");
         String username = body.get("username");
         String password = body.get("password");
         String name     = body.get("name");

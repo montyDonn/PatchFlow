@@ -74,3 +74,13 @@ export const updateUserManagers = async (userId: string, managerIds: string[]): 
   const res = await api.put(`/users/${userId}/managers`, { managerIds });
   return res.data;
 };
+
+export interface ChangePasswordPayload {
+  currentPassword:  string;
+  newPassword:      string;
+  confirmPassword:  string;
+}
+
+export const changePassword = async (payload: ChangePasswordPayload): Promise<void> => {
+  await api.post('/users/me/change-password', payload);
+};

@@ -26,7 +26,7 @@ function getUserInitial(user?: TaskUser | null): string {
 
 const getFileUrl = (url: string): string => {
   if (!url) return '';
-  const base = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace('/api', '');
+  const base = (import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5001/api' : '/api')).replace('/api', '');
   return `${base}${url}`;
 };
 
@@ -112,7 +112,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   const [modulesList, setModulesList] = useState<any[]>([]);
 
   const isDeleted = task.lifecycleStatus === 100;
-  const canManageLifecycle = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
+  const canManageLifecycle = currentUser?.role === 'SUPER_ADMIN';
 
   // currentUser.id may be undefined for sessions created before the login fix.
   // Fall back to currentUser.userId (the raw field the backend sends) for robustness.
@@ -126,7 +126,6 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
 
   const canAssignResources = 
     currentUser?.role === 'SUPER_ADMIN' || 
-    currentUser?.role === 'ADMIN' || 
     (currentUser?.role === 'MANAGER' && isTaskManager);
 
   const canEditResources = canAssignResources && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(task.status);
@@ -138,7 +137,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   if (task.status === 'PENDING_APPROVAL' && canAssignResources) {
     nextStatuses = nextStatuses.filter(s => s !== 'ASSIGNED');
   }
-  if (currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN') {
+  if (currentUser?.role === 'SUPER_ADMIN') {
     // Admins see all valid transitions from the matrix, no further filtering required
   } else if (currentUser?.role === 'CLIENT') {
     nextStatuses = task.status === 'DRAFT' ? ['PENDING_APPROVAL'] : [];
@@ -531,11 +530,11 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     }
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
         
-        <div className="relative bg-gray-900 border border-gray-700 shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-white">
-          <div className="flex items-start justify-between p-6 border-b border-gray-800 bg-gray-800/30">
+        <div className="relative bg-gray-900 border border-gray-700 shadow-2xl rounded-2xl w-[95vw] md:max-w-2xl lg:max-w-4xl max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 text-white">
+          <div className="flex items-start justify-between p-4 sm:p-6 border-b border-gray-800 bg-gray-800/30 shrink-0">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 {isEditingClientFields ? (
@@ -575,7 +574,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
             </button>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="p-4 sm:p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-4 py-3 rounded-xl">
                 {error}
@@ -740,13 +739,13 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
 
   // ADMINISTRATIVE AND TEAM MEMBER VIEW
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative bg-gray-900 border border-gray-700 shadow-2xl rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative bg-gray-900 border border-gray-700 shadow-2xl rounded-2xl w-[95vw] md:max-w-3xl lg:max-w-5xl max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-gray-800 bg-gray-800/30">
+        <div className="flex items-start justify-between p-4 sm:p-6 border-b border-gray-800 bg-gray-800/30 shrink-0">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <span className="text-xs font-bold uppercase tracking-wider text-primary-400 bg-primary-500/10 px-2.5 py-1 rounded-md border border-primary-500/20">
@@ -780,7 +779,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-8 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 custom-scrollbar">
           
           {/* Main Content Area */}
           <div className="lg:col-span-2 space-y-8">
@@ -1106,7 +1105,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
 
                   {renderUserSelector(
                     'Managers *',
-                    usersList.filter(u => u.role === 'MANAGER' || u.role === 'ADMIN' || u.role === 'SUPER_ADMIN'),
+                    usersList.filter(u => u.role === 'MANAGER' || u.role === 'SUPER_ADMIN'),
                     selectedManagerIds,
                     setSelectedManagerIds
                   )}

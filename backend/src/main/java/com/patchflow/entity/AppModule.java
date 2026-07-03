@@ -10,8 +10,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "Module")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+// @Table(name = "Module")
+@Table(name = "change_req_Module")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class AppModule {
 
     @Id
@@ -39,16 +44,13 @@ public class AppModule {
     private List<Task> tasks = new ArrayList<>();
 
     @ManyToMany
-    @JoinTable(
-        name = "_UserModules",
-        joinColumns = @JoinColumn(name = "A"),
-        inverseJoinColumns = @JoinColumn(name = "B")
-    )
+    @JoinTable(name = "change_req_UserModules", joinColumns = @JoinColumn(name = "A"), inverseJoinColumns = @JoinColumn(name = "B"))
     @Builder.Default
     private List<User> users = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
-        if (this.moduleId == null) this.moduleId = java.util.UUID.randomUUID().toString();
+        if (this.moduleId == null)
+            this.moduleId = java.util.UUID.randomUUID().toString();
     }
 }

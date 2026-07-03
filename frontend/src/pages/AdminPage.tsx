@@ -147,7 +147,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <div>
             <label className={labelCls}>Role</label>
             <select className={inputCls} value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
-              {['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'DEVELOPER', 'VERIFIER', 'CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
+              {['SUPER_ADMIN', 'MANAGER', 'DEVELOPER', 'VERIFIER', 'CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
           <div className="col-span-2">
@@ -245,7 +245,7 @@ function EditUserModal({ user, modules, onClose, onSaved }: {
               <label className={labelCls}>Role</label>
               <select className={inputCls} value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
                 disabled={user.userId === currentUser?.id}>
-                {['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'DEVELOPER', 'VERIFIER', 'CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
+                {['SUPER_ADMIN', 'MANAGER', 'DEVELOPER', 'VERIFIER', 'CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
@@ -429,7 +429,7 @@ function UsersTab({ push }: { push: (type: 'success' | 'error', message: string)
               className="appearance-none rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 pr-8 text-sm text-white outline-none focus:border-primary-500"
             >
               <option value="">All Roles</option>
-              {['SUPER_ADMIN','ADMIN','MANAGER','DEVELOPER','VERIFIER','CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
+              {['SUPER_ADMIN','MANAGER','DEVELOPER','VERIFIER','CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
             </select>
             <ChevronDown className="absolute right-2 top-2.5 text-gray-500 pointer-events-none" size={14} />
           </div>
@@ -453,7 +453,7 @@ function UsersTab({ push }: { push: (type: 'success' | 'error', message: string)
 
       {/* Table */}
       <div className="overflow-x-auto rounded-2xl border border-gray-700 bg-gray-950/80">
-        <table className="min-w-full text-sm text-left">
+        <table className="min-w-full text-sm text-left whitespace-nowrap">
           <thead className="bg-gray-900/70 text-gray-400 text-xs uppercase tracking-wide">
             <tr>
               <th className="px-5 py-3">User</th>
@@ -613,7 +613,7 @@ function ModulesTab({ push }: { push: (type: 'success' | 'error', message: strin
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-gray-700 bg-gray-950/80">
-        <table className="min-w-full text-sm text-left">
+        <table className="min-w-full text-sm text-left whitespace-nowrap">
           <thead className="bg-gray-900/70 text-gray-400 text-xs uppercase tracking-wide">
             <tr>
               <th className="px-5 py-3">Module</th>
@@ -635,7 +635,7 @@ function ModulesTab({ push }: { push: (type: 'success' | 'error', message: strin
                     ? <input className={inputCls} value={editName} onChange={e => setEditName(e.target.value)} />
                     : <span className="font-semibold text-white">{m.name}</span>}
                 </td>
-                <td className="px-5 py-4 max-w-xs">
+                <td className="px-5 py-4 max-w-xs whitespace-normal">
                   {editingId === m.id
                     ? <textarea className={`${inputCls} min-h-[52px] resize-none`} value={editDescription} onChange={e => setEditDescription(e.target.value)} />
                     : <span className="text-gray-400">{m.description || '—'}</span>}
@@ -847,7 +847,7 @@ function RequestsTab({ push, onPendingCount }: {
 
       {/* Table */}
       <div className="overflow-x-auto rounded-2xl border border-gray-700 bg-gray-950/80">
-        <table className="min-w-full text-sm text-left">
+        <table className="min-w-full text-sm text-left whitespace-nowrap">
           <thead className="bg-gray-900/70 text-gray-400 text-xs uppercase tracking-wide">
             <tr>
               <th className="px-5 py-3">Applicant</th>
