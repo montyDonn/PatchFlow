@@ -39,7 +39,7 @@ public class TaskComment {
     private String authorRole;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "files", columnDefinition = "jsonb")
+    @Column(name = "files", columnDefinition = "json")
     private List<String> files;
 
     @Builder.Default

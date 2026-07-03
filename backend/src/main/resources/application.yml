@@ -15,10 +15,10 @@ spring:
             enable: false
 
   datasource:
-    url: jdbc:postgresql://10.1.2.24:5432/postgres?sslmode=disable
+    url: jdbc:mysql://10.1.2.24:3306/postgres?useSSL=false&allowPublicKeyRetrieval=true
     username: ps_user
     password: ${SPRING_DATASOURCE_PASSWORD:Upcl@2602}
-    driver-class-name: org.postgresql.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
     hikari:
       pool-name: PatchFlowHikariCP
@@ -37,9 +37,8 @@ spring:
         implicit-strategy: org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: false
-        default_schema: public
         globally_quoted_identifiers: true
         default_batch_fetch_size: 16
     show-sql: false

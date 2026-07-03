@@ -87,14 +87,14 @@ public class DataSeeder implements CommandLineRunner {
 
         // Clear all existing task-related data
         try {
-            jdbcTemplate.execute("DELETE FROM \"TaskComment\"");
-            jdbcTemplate.execute("DELETE FROM \"TaskAttachment\"");
-            jdbcTemplate.execute("DELETE FROM \"StatusHistory\"");
-            jdbcTemplate.execute("DELETE FROM \"AuditLog\"");
-            jdbcTemplate.execute("DELETE FROM \"_TaskManagers\"");
-            jdbcTemplate.execute("DELETE FROM \"_TaskDevelopers\"");
-            jdbcTemplate.execute("DELETE FROM \"_TaskVerifiers\"");
-            jdbcTemplate.execute("DELETE FROM \"Task\"");
+            jdbcTemplate.execute("DELETE FROM change_req_TaskComment");
+            jdbcTemplate.execute("DELETE FROM change_req_TaskAttachment");
+            jdbcTemplate.execute("DELETE FROM change_req_StatusHistory");
+            jdbcTemplate.execute("DELETE FROM change_req_AuditLog");
+            jdbcTemplate.execute("DELETE FROM change_req_TaskManagers");
+            jdbcTemplate.execute("DELETE FROM change_req_TaskDevelopers");
+            jdbcTemplate.execute("DELETE FROM change_req_TaskVerifiers");
+            jdbcTemplate.execute("DELETE FROM change_req_Task");
 
         } catch (Exception e) {
             System.err.println("Error clearing task tables: " + e.getMessage());
@@ -131,7 +131,7 @@ public class DataSeeder implements CommandLineRunner {
         moduleRepository.findAll().forEach(mod -> {
             if (!activeModuleNames.contains(mod.getModuleName())) {
                 // Set task module references to null to prevent foreign key constraint violations
-                jdbcTemplate.update("UPDATE \"Task\" SET \"moduleId\" = NULL WHERE \"moduleId\" = ?", mod.getModuleId());
+                jdbcTemplate.update("UPDATE change_req_Task SET moduleId = NULL WHERE moduleId = ?", mod.getModuleId());
                 moduleRepository.delete(mod);
             }
         });

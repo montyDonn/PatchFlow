@@ -17,21 +17,21 @@ public interface SessionRepository extends JpaRepository<Session, String> {
 
     @Transactional
     @Modifying
-    @Query(value = "UPDATE \"change_req_Session\" SET \"expiresAt\" = :now " +
-            "WHERE \"userId\" = :userId AND \"expiresAt\" < :now", nativeQuery = true)
+    @Query(value = "UPDATE change_req_Session SET expiresAt = :now " +
+            "WHERE userId = :userId AND expiresAt < :now", nativeQuery = true)
     void deleteExpiredByUserId(
             @Param("userId") String userId,
             @Param("now") Instant now);
 
     @Transactional
     @Modifying
-    @Query(value = "UPDATE \"change_req_Session\" SET \"expiresAt\" = CURRENT_TIMESTAMP " +
-            "WHERE \"tokenHash\" = :tokenHash", nativeQuery = true)
+    @Query(value = "UPDATE change_req_Session SET expiresAt = CURRENT_TIMESTAMP " +
+            "WHERE tokenHash = :tokenHash", nativeQuery = true)
     void deleteByTokenHash(@Param("tokenHash") String tokenHash);
 
     @Transactional
     @Modifying
-    @Query(value = "UPDATE \"change_req_Session\" SET \"expiresAt\" = CURRENT_TIMESTAMP " +
-            "WHERE \"userId\" = :userId", nativeQuery = true)
+    @Query(value = "UPDATE change_req_Session SET expiresAt = CURRENT_TIMESTAMP " +
+            "WHERE userId = :userId", nativeQuery = true)
     void deleteAllByUserId(@Param("userId") String userId);
 }

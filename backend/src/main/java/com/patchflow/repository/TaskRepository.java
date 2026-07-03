@@ -69,29 +69,29 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     String findMaxIdWithPrefix(@Param("prefix") String prefix);
 
     @Modifying
-    @Query(value = "UPDATE \"change_req_TaskManagers\" SET \"is_active\" = false WHERE \"A\" = :taskId", nativeQuery = true)
+    @Query(value = "UPDATE change_req_TaskManagers SET is_active = false WHERE A = :taskId", nativeQuery = true)
     void deactivateManagersByTaskId(@Param("taskId") String taskId);
 
     @Modifying
-    @Query(value = "INSERT INTO \"change_req_TaskManagers\" (\"A\", \"B\", \"is_active\") VALUES (:taskId, :managerId, true) " +
-                   "ON CONFLICT (\"A\", \"B\") DO UPDATE SET \"is_active\" = true", nativeQuery = true)
+    @Query(value = "INSERT INTO change_req_TaskManagers (A, B, is_active) VALUES (:taskId, :managerId, true) " +
+                   "ON DUPLICATE KEY UPDATE is_active = true", nativeQuery = true)
     void upsertManager(@Param("taskId") String taskId, @Param("managerId") String managerId);
 
     @Modifying
-    @Query(value = "UPDATE \"change_req_TaskDevelopers\" SET \"is_active\" = false WHERE \"A\" = :taskId", nativeQuery = true)
+    @Query(value = "UPDATE change_req_TaskDevelopers SET is_active = false WHERE A = :taskId", nativeQuery = true)
     void deactivateDevelopersByTaskId(@Param("taskId") String taskId);
 
     @Modifying
-    @Query(value = "INSERT INTO \"change_req_TaskDevelopers\" (\"A\", \"B\", \"is_active\") VALUES (:taskId, :developerId, true) " +
-                   "ON CONFLICT (\"A\", \"B\") DO UPDATE SET \"is_active\" = true", nativeQuery = true)
+    @Query(value = "INSERT INTO change_req_TaskDevelopers (A, B, is_active) VALUES (:taskId, :developerId, true) " +
+                   "ON DUPLICATE KEY UPDATE is_active = true", nativeQuery = true)
     void upsertDeveloper(@Param("taskId") String taskId, @Param("developerId") String developerId);
 
     @Modifying
-    @Query(value = "UPDATE \"change_req_TaskVerifiers\" SET \"is_active\" = false WHERE \"A\" = :taskId", nativeQuery = true)
+    @Query(value = "UPDATE change_req_TaskVerifiers SET is_active = false WHERE A = :taskId", nativeQuery = true)
     void deactivateVerifiersByTaskId(@Param("taskId") String taskId);
 
     @Modifying
-    @Query(value = "INSERT INTO \"change_req_TaskVerifiers\" (\"A\", \"B\", \"is_active\") VALUES (:taskId, :verifierId, true) " +
-                   "ON CONFLICT (\"A\", \"B\") DO UPDATE SET \"is_active\" = true", nativeQuery = true)
+    @Query(value = "INSERT INTO change_req_TaskVerifiers (A, B, is_active) VALUES (:taskId, :verifierId, true) " +
+                   "ON DUPLICATE KEY UPDATE is_active = true", nativeQuery = true)
     void upsertVerifier(@Param("taskId") String taskId, @Param("verifierId") String verifierId);
 }
