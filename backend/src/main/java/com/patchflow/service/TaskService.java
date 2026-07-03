@@ -561,40 +561,11 @@ public class TaskService {
         if (recipient == null)
             return;
 
-        // 1. In-App Notification (always)
+        // In-App Notification (always, which delegates queueing to UPCLNotificationService)
         try {
             notificationService.createNotification(recipient.getUserId(), type, msg);
         } catch (Exception e) {
             // fail-safe
-        }
-
-        // 2. Direct Email
-        if (recipient.getEmail() != null && !recipient.getEmail().trim().isEmpty()) {
-            try {
-                emailSenderService.sendEmail(recipient.getEmail(), "Patch Notification: " + type.replace("TASK_", ""),
-                        msg);
-            } catch (Exception e) {
-                // fail-safe
-            }
-        }
-
-        // 3. Direct SMS
-        if (recipient.getPhone() != null && !recipient.getPhone().trim().isEmpty()) {
-            try {
-                smsSenderService.sendSms(recipient.getPhone(), msg,
-                        recipient.getName() != null ? recipient.getName() : "User");
-            } catch (Exception e) {
-                // fail-safe
-            }
-        }
-
-        // 4. Direct WhatsApp
-        if (recipient.getPhone() != null && !recipient.getPhone().trim().isEmpty()) {
-            try {
-                whatsAppSenderService.sendWhatsAppMessage(recipient.getPhone(), msg);
-            } catch (Exception e) {
-                // fail-safe
-            }
         }
     }
 
@@ -684,6 +655,23 @@ public class TaskService {
                 .newValue(content.trim()).reason("Comment added").build());
 
         taskRepository.save(task);
+
+        // Trigger notifications if commenter is a manager or admin
+        boolean isManager = "MANAGER".equals(actor.getRole()) || "ADMIN".equals(actor.getRole()) || "SUPER_ADMIN".equals(actor.getRole()) ||
+                task.getManagers().stream().anyMatch(m -> m.getUserId().equals(actorId));
+
+        if (isManager) {
+            String commentMsg = "Manager " + actor.getName() + " added a comment to patch \"" + task.getTitle() + "\": " + content.trim();
+            // Notify developers
+            task.getDevelopers().forEach(d -> {
+                try {
+                    triggerNotifications(d, "MANAGER_COMMENT", commentMsg);
+                } catch (Exception e) {
+                    // fail-safe
+                }
+            });
+        }
+
         return getTaskById(taskId);
     }
 

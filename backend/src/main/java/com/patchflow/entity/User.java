@@ -62,6 +62,18 @@ public class User {
     @Column(name = "createdBy", length = 36)
     private String createdBy;
 
+    @Builder.Default
+    @Column(name = "notifyEmail", nullable = false)
+    private boolean notifyEmail = true;
+
+    @Builder.Default
+    @Column(name = "notifySms", nullable = false)
+    private boolean notifySms = true;
+
+    @Builder.Default
+    @Column(name = "notifyWhatsapp", nullable = false)
+    private boolean notifyWhatsapp = true;
+
     // ── Relations ────────────────────────────────────────────────────────────
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
