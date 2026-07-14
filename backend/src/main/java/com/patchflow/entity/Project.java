@@ -32,6 +32,7 @@ public class Project {
     private String description;
 
     @Column(name = "isActive", nullable = false)
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private boolean isActive = true;
 
     @Builder.Default

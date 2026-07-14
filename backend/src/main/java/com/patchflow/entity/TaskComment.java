@@ -38,7 +38,7 @@ public class TaskComment {
     @Column(name = "authorRole")
     private String authorRole;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @Column(name = "files", columnDefinition = "json")
     private List<String> files;
 

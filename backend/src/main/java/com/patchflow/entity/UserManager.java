@@ -36,6 +36,7 @@ public class UserManager {
     // @Column(name = "isActive", nullable = false)
     // private boolean isActive = true;
     @Column(name = "isactive", nullable = false)
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private boolean isActive = true;
 
     @ManyToOne(fetch = FetchType.LAZY)

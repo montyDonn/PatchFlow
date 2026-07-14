@@ -33,6 +33,7 @@ public class AppModule {
     private String description;
 
     @Column(name = "isActive", nullable = false)
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private boolean isActive = true;
 
     @ManyToOne(fetch = FetchType.LAZY)

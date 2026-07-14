@@ -49,6 +49,7 @@ public class User {
     private String previousDesignation;
 
     @Column(name = "isActive", nullable = false)
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private boolean isActive = true;
 
     @Builder.Default
@@ -64,14 +65,17 @@ public class User {
 
     @Builder.Default
     @Column(name = "notifyEmail", nullable = false)
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private boolean notifyEmail = true;
 
     @Builder.Default
     @Column(name = "notifySms", nullable = false)
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private boolean notifySms = true;
 
     @Builder.Default
     @Column(name = "notifyWhatsapp", nullable = false)
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private boolean notifyWhatsapp = true;
 
     // ── Relations ────────────────────────────────────────────────────────────

@@ -88,6 +88,7 @@ public class Task {
 
     @Builder.Default
     @Column(name = "isInternal", nullable = false)
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private Boolean isInternal = false;
 
     @Column(name = "dateGiven")
@@ -137,19 +138,19 @@ public class Task {
 
     @ManyToMany
     @JoinTable(name = "change_req_TaskManagers", joinColumns = @JoinColumn(name = "A"), inverseJoinColumns = @JoinColumn(name = "B"))
-
+    @org.hibernate.annotations.SQLJoinTableRestriction("is_active = 1")
     @Builder.Default
     private List<User> managers = new ArrayList<>();
 
     @ManyToMany
     @JoinTable(name = "change_req_TaskDevelopers", joinColumns = @JoinColumn(name = "A"), inverseJoinColumns = @JoinColumn(name = "B"))
-
+    @org.hibernate.annotations.SQLJoinTableRestriction("is_active = 1")
     @Builder.Default
     private List<User> developers = new ArrayList<>();
 
     @ManyToMany
     @JoinTable(name = "change_req_TaskVerifiers", joinColumns = @JoinColumn(name = "A"), inverseJoinColumns = @JoinColumn(name = "B"))
-
+    @org.hibernate.annotations.SQLJoinTableRestriction("is_active = 1")
     @Builder.Default
     private List<User> verifiers = new ArrayList<>();
 

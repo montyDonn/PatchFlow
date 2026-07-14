@@ -15,9 +15,9 @@ spring:
             enable: false
 
   datasource:
-    url: jdbc:mysql://10.1.2.24:3306/postgres?useSSL=false&allowPublicKeyRetrieval=true
-    username: ps_user
-    password: ${SPRING_DATASOURCE_PASSWORD:Upcl@2602}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
     hikari:

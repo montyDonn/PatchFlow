@@ -32,6 +32,7 @@ public class Notification {
     private String message;
 
     @Column(name = "read", nullable = false)
+    @JdbcTypeCode(SqlTypes.TINYINT)
     private boolean read = false;
 
     @Builder.Default
