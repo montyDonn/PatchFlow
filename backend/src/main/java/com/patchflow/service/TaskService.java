@@ -376,6 +376,13 @@ public class TaskService {
                 .build();
         task = taskRepository.save(task);
 
+        // Explicitly activate initial assignments to override database DEFAULT '0'
+        final String taskId = task.getId();
+        finalManagerIds.forEach(id -> taskRepository.upsertManager(taskId, id));
+        finalDevIds.forEach(id -> taskRepository.upsertDeveloper(taskId, id));
+        finalVerIds.forEach(id -> taskRepository.upsertVerifier(taskId, id));
+
+
         statusHistoryRepository.save(StatusHistory.builder()
                 .taskId(task.getId()).previousStatus("DRAFT").newStatus(initialStatus)
                 .changedById(authorId).changedByName(actor.getName())
@@ -839,33 +846,39 @@ public class TaskService {
             List<String> ids = data.containsKey("managerIds") ? (List<String>) data.get("managerIds")
                     : List.of((String) data.get("managerId"));
             ids.forEach(id -> assertActiveUser(id, "managerId"));
-            List<String> validIds = userRepository.findAllById(ids).stream().map(User::getUserId)
+            List<User> validUsers = userRepository.findAllById(ids);
+            List<String> validIds = validUsers.stream().map(User::getUserId)
                     .collect(Collectors.toList());
 
             taskRepository.deactivateManagersByTaskId(taskId);
             validIds.forEach(id -> taskRepository.upsertManager(taskId, id));
+            task.setManagers(validUsers);
             assignmentChanged = true;
         }
         if (data.containsKey("developerIds") || data.containsKey("developers")) {
             @SuppressWarnings("unchecked")
             List<String> ids = data.containsKey("developerIds") ? (List<String>) data.get("developerIds")
                     : (List<String>) data.get("developers");
-            List<String> validIds = userRepository.findAllById(ids).stream().map(User::getUserId)
+            List<User> validUsers = userRepository.findAllById(ids);
+            List<String> validIds = validUsers.stream().map(User::getUserId)
                     .collect(Collectors.toList());
 
             taskRepository.deactivateDevelopersByTaskId(taskId);
             validIds.forEach(id -> taskRepository.upsertDeveloper(taskId, id));
+            task.setDevelopers(validUsers);
             assignmentChanged = true;
         }
         if (data.containsKey("verifierIds") || data.containsKey("verifiers")) {
             @SuppressWarnings("unchecked")
             List<String> ids = data.containsKey("verifierIds") ? (List<String>) data.get("verifierIds")
                     : (List<String>) data.get("verifiers");
-            List<String> validIds = userRepository.findAllById(ids).stream().map(User::getUserId)
+            List<User> validUsers = userRepository.findAllById(ids);
+            List<String> validIds = validUsers.stream().map(User::getUserId)
                     .collect(Collectors.toList());
 
             taskRepository.deactivateVerifiersByTaskId(taskId);
             validIds.forEach(id -> taskRepository.upsertVerifier(taskId, id));
+            task.setVerifiers(validUsers);
             assignmentChanged = true;
         }
 
