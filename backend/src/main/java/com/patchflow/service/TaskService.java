@@ -852,7 +852,6 @@ public class TaskService {
 
             taskRepository.deactivateManagersByTaskId(taskId);
             validIds.forEach(id -> taskRepository.upsertManager(taskId, id));
-            task.setManagers(validUsers);
             assignmentChanged = true;
         }
         if (data.containsKey("developerIds") || data.containsKey("developers")) {
@@ -865,7 +864,6 @@ public class TaskService {
 
             taskRepository.deactivateDevelopersByTaskId(taskId);
             validIds.forEach(id -> taskRepository.upsertDeveloper(taskId, id));
-            task.setDevelopers(validUsers);
             assignmentChanged = true;
         }
         if (data.containsKey("verifierIds") || data.containsKey("verifiers")) {
@@ -878,7 +876,6 @@ public class TaskService {
 
             taskRepository.deactivateVerifiersByTaskId(taskId);
             validIds.forEach(id -> taskRepository.upsertVerifier(taskId, id));
-            task.setVerifiers(validUsers);
             assignmentChanged = true;
         }
 
