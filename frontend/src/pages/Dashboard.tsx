@@ -51,139 +51,139 @@ const STAGES: {
   glow: string;
   chartColor: string;
 }[] = [
-  {
-    status: 'DRAFT',
-    label: 'Draft',
-    icon: <FileText size={18} />,
-    gradient: 'from-slate-500 to-slate-600',
-    ring: 'ring-slate-400/40',
-    bg: 'bg-slate-500/10',
-    text: 'text-slate-400',
-    border: 'border-slate-500/30',
-    glow: 'shadow-slate-500/20',
-    chartColor: '#94a3b8',
-  },
-  {
-    status: 'PENDING_APPROVAL',
-    label: 'Pending Approval',
-    icon: <ShieldCheck size={18} />,
-    gradient: 'from-amber-500 to-amber-600',
-    ring: 'ring-amber-400/40',
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-400',
-    border: 'border-amber-500/30',
-    glow: 'shadow-amber-500/20',
-    chartColor: '#fbbf24',
-  },
-  {
-    status: 'ASSIGNED',
-    label: 'Assigned',
-    icon: <UserCheck size={18} />,
-    gradient: 'from-blue-500 to-blue-600',
-    ring: 'ring-blue-400/40',
-    bg: 'bg-blue-500/10',
-    text: 'text-blue-400',
-    border: 'border-blue-500/30',
-    glow: 'shadow-blue-500/20',
-    chartColor: '#60a5fa',
-  },
-  {
-    status: 'IN_DEVELOPMENT',
-    label: 'In Development',
-    icon: <Code2 size={18} />,
-    gradient: 'from-purple-500 to-purple-600',
-    ring: 'ring-purple-400/40',
-    bg: 'bg-purple-500/10',
-    text: 'text-purple-400',
-    border: 'border-purple-500/30',
-    glow: 'shadow-purple-500/20',
-    chartColor: '#a78bfa',
-  },
-  {
-    status: 'VERIFYING',
-    label: 'Verifying',
-    icon: <Search size={18} />,
-    gradient: 'from-indigo-500 to-indigo-600',
-    ring: 'ring-indigo-400/40',
-    bg: 'bg-indigo-500/10',
-    text: 'text-indigo-400',
-    border: 'border-indigo-500/30',
-    glow: 'shadow-indigo-500/20',
-    chartColor: '#818cf8',
-  },
-  {
-    status: 'COMPLETED',
-    label: 'Completed',
-    icon: <CheckCircle size={18} />,
-    gradient: 'from-emerald-500 to-emerald-600',
-    ring: 'ring-emerald-400/40',
-    bg: 'bg-emerald-500/10',
-    text: 'text-emerald-400',
-    border: 'border-emerald-500/30',
-    glow: 'shadow-emerald-500/20',
-    chartColor: '#34d399',
-  },
-  {
-    status: 'RETURNED_TO_DEVELOPER',
-    label: 'Returned',
-    icon: <RotateCcw size={18} />,
-    gradient: 'from-rose-500 to-rose-600',
-    ring: 'ring-rose-400/40',
-    bg: 'bg-rose-500/10',
-    text: 'text-rose-400',
-    border: 'border-rose-500/30',
-    glow: 'shadow-rose-500/20',
-    chartColor: '#fb7185',
-  },
-  {
-    status: 'REJECTED',
-    label: 'Rejected',
-    icon: <XCircle size={18} />,
-    gradient: 'from-red-500 to-red-600',
-    ring: 'ring-red-400/40',
-    bg: 'bg-red-500/10',
-    text: 'text-red-400',
-    border: 'border-red-500/30',
-    glow: 'shadow-red-500/20',
-    chartColor: '#f87171',
-  },
-  {
-    status: 'DELAYED',
-    label: 'Delayed',
-    icon: <TimerOff size={18} />,
-    gradient: 'from-orange-500 to-orange-600',
-    ring: 'ring-orange-400/40',
-    bg: 'bg-orange-500/10',
-    text: 'text-orange-400',
-    border: 'border-orange-500/30',
-    glow: 'shadow-orange-500/20',
-    chartColor: '#fb923c',
-  },
-  {
-    status: 'ON_HOLD',
-    label: 'On Hold',
-    icon: <PauseCircle size={18} />,
-    gradient: 'from-yellow-500 to-yellow-600',
-    ring: 'ring-yellow-400/40',
-    bg: 'bg-yellow-500/10',
-    text: 'text-yellow-400',
-    border: 'border-yellow-500/30',
-    glow: 'shadow-yellow-500/20',
-    chartColor: '#facc15',
-  },
-  {
-    status: 'CANCELLED',
-    label: 'Cancelled',
-    icon: <Ban size={18} />,
-    gradient: 'from-gray-500 to-gray-600',
-    ring: 'ring-gray-400/40',
-    bg: 'bg-gray-500/10',
-    text: 'text-gray-400',
-    border: 'border-gray-500/30',
-    glow: 'shadow-gray-500/20',
-    chartColor: '#9ca3af',
-  },
-];
+    {
+      status: 'DRAFT',
+      label: 'Draft',
+      icon: <FileText size={18} />,
+      gradient: 'from-slate-500 to-slate-600',
+      ring: 'ring-slate-400/40',
+      bg: 'bg-slate-500/10',
+      text: 'text-slate-400',
+      border: 'border-slate-500/30',
+      glow: 'shadow-slate-500/20',
+      chartColor: '#94a3b8',
+    },
+    {
+      status: 'PENDING_APPROVAL',
+      label: 'Pending Approval',
+      icon: <ShieldCheck size={18} />,
+      gradient: 'from-amber-500 to-amber-600',
+      ring: 'ring-amber-400/40',
+      bg: 'bg-amber-500/10',
+      text: 'text-amber-400',
+      border: 'border-amber-500/30',
+      glow: 'shadow-amber-500/20',
+      chartColor: '#fbbf24',
+    },
+    {
+      status: 'ASSIGNED',
+      label: 'Assigned',
+      icon: <UserCheck size={18} />,
+      gradient: 'from-blue-500 to-blue-600',
+      ring: 'ring-blue-400/40',
+      bg: 'bg-blue-500/10',
+      text: 'text-blue-400',
+      border: 'border-blue-500/30',
+      glow: 'shadow-blue-500/20',
+      chartColor: '#60a5fa',
+    },
+    {
+      status: 'IN_DEVELOPMENT',
+      label: 'In Development',
+      icon: <Code2 size={18} />,
+      gradient: 'from-purple-500 to-purple-600',
+      ring: 'ring-purple-400/40',
+      bg: 'bg-purple-500/10',
+      text: 'text-purple-400',
+      border: 'border-purple-500/30',
+      glow: 'shadow-purple-500/20',
+      chartColor: '#a78bfa',
+    },
+    {
+      status: 'VERIFYING',
+      label: 'Verifying',
+      icon: <Search size={18} />,
+      gradient: 'from-indigo-500 to-indigo-600',
+      ring: 'ring-indigo-400/40',
+      bg: 'bg-indigo-500/10',
+      text: 'text-indigo-400',
+      border: 'border-indigo-500/30',
+      glow: 'shadow-indigo-500/20',
+      chartColor: '#818cf8',
+    },
+    {
+      status: 'COMPLETED',
+      label: 'Completed',
+      icon: <CheckCircle size={18} />,
+      gradient: 'from-emerald-500 to-emerald-600',
+      ring: 'ring-emerald-400/40',
+      bg: 'bg-emerald-500/10',
+      text: 'text-emerald-400',
+      border: 'border-emerald-500/30',
+      glow: 'shadow-emerald-500/20',
+      chartColor: '#34d399',
+    },
+    {
+      status: 'RETURNED_TO_DEVELOPER',
+      label: 'Returned',
+      icon: <RotateCcw size={18} />,
+      gradient: 'from-rose-500 to-rose-600',
+      ring: 'ring-rose-400/40',
+      bg: 'bg-rose-500/10',
+      text: 'text-rose-400',
+      border: 'border-rose-500/30',
+      glow: 'shadow-rose-500/20',
+      chartColor: '#fb7185',
+    },
+    {
+      status: 'REJECTED',
+      label: 'Rejected',
+      icon: <XCircle size={18} />,
+      gradient: 'from-red-500 to-red-600',
+      ring: 'ring-red-400/40',
+      bg: 'bg-red-500/10',
+      text: 'text-red-400',
+      border: 'border-red-500/30',
+      glow: 'shadow-red-500/20',
+      chartColor: '#f87171',
+    },
+    {
+      status: 'DELAYED',
+      label: 'Delayed',
+      icon: <TimerOff size={18} />,
+      gradient: 'from-orange-500 to-orange-600',
+      ring: 'ring-orange-400/40',
+      bg: 'bg-orange-500/10',
+      text: 'text-orange-400',
+      border: 'border-orange-500/30',
+      glow: 'shadow-orange-500/20',
+      chartColor: '#fb923c',
+    },
+    {
+      status: 'ON_HOLD',
+      label: 'On Hold',
+      icon: <PauseCircle size={18} />,
+      gradient: 'from-yellow-500 to-yellow-600',
+      ring: 'ring-yellow-400/40',
+      bg: 'bg-yellow-500/10',
+      text: 'text-yellow-400',
+      border: 'border-yellow-500/30',
+      glow: 'shadow-yellow-500/20',
+      chartColor: '#facc15',
+    },
+    {
+      status: 'CANCELLED',
+      label: 'Cancelled',
+      icon: <Ban size={18} />,
+      gradient: 'from-gray-500 to-gray-600',
+      ring: 'ring-gray-400/40',
+      bg: 'bg-gray-500/10',
+      text: 'text-gray-400',
+      border: 'border-gray-500/30',
+      glow: 'shadow-gray-500/20',
+      chartColor: '#9ca3af',
+    },
+  ];
 
 /* ── Donut Chart Component ─────────────────────────────────── */
 
@@ -398,10 +398,10 @@ const Dashboard = () => {
       const statusValue = String(t.status || '').toLowerCase();
       const statusLabel = (STAGES.find(s => s.status === t.status)?.label || '').toLowerCase();
       const moduleName = (t.module?.name || '').toLowerCase();
-      
+
       const assigneeName = getAssigneeName(t.assignee).toLowerCase();
       const clientName = getAssigneeName(t.client).toLowerCase();
-      
+
       const managerNames = [
         t.manager ? getAssigneeName(t.manager) : '',
         ...(t.managers || []).map(m => getAssigneeName(m))
@@ -445,10 +445,10 @@ const Dashboard = () => {
       const statusValue = String(t.status || '').toLowerCase();
       const statusLabel = (STAGES.find(s => s.status === t.status)?.label || '').toLowerCase();
       const moduleName = (t.module?.name || '').toLowerCase();
-      
+
       const assigneeName = getAssigneeName(t.assignee).toLowerCase();
       const clientName = getAssigneeName(t.client).toLowerCase();
-      
+
       const managerNames = [
         t.manager ? getAssigneeName(t.manager) : '',
         ...(t.managers || []).map(m => getAssigneeName(m))
@@ -574,9 +574,8 @@ const Dashboard = () => {
                   <div className={`p-1.5 rounded-lg ${stage.bg} ${stage.text} transition-colors`}>
                     {stage.icon}
                   </div>
-                  <span className={`text-xs font-semibold uppercase tracking-wider truncate ${
-                    isSelected ? stage.text : 'text-gray-400 group-hover:text-gray-300'
-                  } transition-colors`}>
+                  <span className={`text-xs font-semibold uppercase tracking-wider truncate ${isSelected ? stage.text : 'text-gray-400 group-hover:text-gray-300'
+                    } transition-colors`}>
                     {stage.label}
                   </span>
                 </div>
@@ -645,18 +644,16 @@ const Dashboard = () => {
                         <h3 className="font-semibold text-gray-200 line-clamp-1 group-hover:text-white transition-colors">
                           {task.title}
                         </h3>
-                        <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                          stageConf
+                        <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${stageConf
                             ? `${stageConf.bg} ${stageConf.text} ${stageConf.border}`
                             : 'bg-gray-500/10 text-gray-400 border-gray-500/30'
-                        }`}>
+                          }`}>
                           {stageConf?.label || task.status}
                         </span>
                       </div>
                       {task.plannedEndDate && (
-                        <div className={`text-[10px] font-medium flex items-center gap-1 mb-3 px-2 py-0.5 rounded bg-gray-950/40 border border-gray-800 self-start ${
-                          new Date(task.plannedEndDate).getTime() < Date.now() ? 'text-rose-400 border-rose-900/30' : 'text-amber-400 border-amber-900/30'
-                        }`}>
+                        <div className={`text-[10px] font-medium flex items-center gap-1 mb-3 px-2 py-0.5 rounded bg-gray-950/40 border border-gray-800 self-start ${new Date(task.plannedEndDate).getTime() < Date.now() ? 'text-rose-400 border-rose-900/30' : 'text-amber-400 border-amber-900/30'
+                          }`}>
                           <Clock size={10} className="shrink-0" />
                           <span>Deadline: {new Date(task.plannedEndDate).toLocaleDateString()}</span>
                         </div>
@@ -733,9 +730,8 @@ const Dashboard = () => {
                       </span>
                     </div>
                     {task.plannedEndDate && (
-                      <div className={`text-[10px] font-medium flex items-center gap-1 mb-3 px-2 py-0.5 rounded bg-gray-950/40 border border-gray-800 self-start ${
-                        new Date(task.plannedEndDate).getTime() < Date.now() ? 'text-rose-400 border-rose-900/30' : 'text-amber-400 border-amber-900/30'
-                      }`}>
+                      <div className={`text-[10px] font-medium flex items-center gap-1 mb-3 px-2 py-0.5 rounded bg-gray-950/40 border border-gray-800 self-start ${new Date(task.plannedEndDate).getTime() < Date.now() ? 'text-rose-400 border-rose-900/30' : 'text-amber-400 border-amber-900/30'
+                        }`}>
                         <Clock size={10} className="shrink-0" />
                         <span>Deadline: {new Date(task.plannedEndDate).toLocaleDateString()}</span>
                       </div>
@@ -758,8 +754,8 @@ const Dashboard = () => {
                   {searchQuery ? <Search size={24} /> : selectedStageConfig.icon}
                 </div>
                 <p className="text-sm">
-                  {searchQuery 
-                    ? `No patches found matching "${searchQuery}" in ${selectedStageConfig.label}.` 
+                  {searchQuery
+                    ? `No patches found matching "${searchQuery}" in ${selectedStageConfig.label}.`
                     : `No patches in ${selectedStageConfig.label}.`
                   }
                 </p>
@@ -805,17 +801,15 @@ const Dashboard = () => {
                             {task.title}
                           </h3>
                         </div>
-                        <span className={`self-start text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border mb-3 ${
-                          stageConf
+                        <span className={`self-start text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border mb-3 ${stageConf
                             ? `${stageConf.bg} ${stageConf.text} ${stageConf.border}`
                             : 'bg-gray-500/10 text-gray-400 border-gray-500/30'
-                        }`}>
+                          }`}>
                           {stageConf?.label || task.status}
                         </span>
                         {task.plannedEndDate && (
-                          <div className={`text-[10px] font-medium flex items-center gap-1 mb-3 px-2 py-0.5 rounded bg-gray-950/40 border border-gray-800 self-start ${
-                            new Date(task.plannedEndDate).getTime() < Date.now() ? 'text-rose-400 border-rose-900/30' : 'text-amber-400 border-amber-900/30'
-                          }`}>
+                          <div className={`text-[10px] font-medium flex items-center gap-1 mb-3 px-2 py-0.5 rounded bg-gray-950/40 border border-gray-800 self-start ${new Date(task.plannedEndDate).getTime() < Date.now() ? 'text-rose-400 border-rose-900/30' : 'text-amber-400 border-amber-900/30'
+                            }`}>
                             <Clock size={10} className="shrink-0" />
                             <span>Deadline: {new Date(task.plannedEndDate).toLocaleDateString()}</span>
                           </div>
@@ -866,13 +860,12 @@ const Dashboard = () => {
                           {task.title}
                         </h4>
                         <div className="flex items-center justify-between mt-2.5">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                            isOverdue
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${isOverdue
                               ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                               : diffDays <= 1
-                              ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
-                              : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                          }`}>
+                                ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+                                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            }`}>
                             {isOverdue ? 'Overdue' : diffDays === 0 ? 'Due Today' : diffDays === 1 ? 'Due Tomorrow' : `Due in ${diffDays} days`}
                           </span>
                           <span className="text-xs text-gray-400 font-mono">

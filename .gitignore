@@ -39,3 +39,16 @@ coverage/
 # Temporary
 tmp/
 temp/
+
+# Release and Build Binaries
+*.war
+*.zip
+*.tar.gz
+*.rar
+
+# TypeScript Build Errors and Local Developer logs
+*-errors.txt
+*.log
+
+# Database Client Scratchpads
+backend/query

@@ -118,14 +118,14 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   // Fall back to currentUser.userId (the raw field the backend sends) for robustness.
   const currentUserId = currentUser?.id || (currentUser as any)?.userId;
 
-  const isTaskManager = 
-    task.managers?.some((m: any) => (m.id || m.userId) === currentUserId) || 
-    task.managerId === currentUserId || 
+  const isTaskManager =
+    task.managers?.some((m: any) => (m.id || m.userId) === currentUserId) ||
+    task.managerId === currentUserId ||
     task.manager?.id === currentUserId ||
     task.manager?.userId === currentUserId;
 
-  const canAssignResources = 
-    currentUser?.role === 'SUPER_ADMIN' || 
+  const canAssignResources =
+    currentUser?.role === 'SUPER_ADMIN' ||
     (currentUser?.role === 'MANAGER' && isTaskManager);
 
   const canEditResources = canAssignResources && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(task.status);
@@ -143,21 +143,21 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     nextStatuses = task.status === 'DRAFT' ? ['PENDING_APPROVAL'] : [];
   } else if (currentUser?.role === 'MANAGER') {
     // Only the assigned manager can move the patch forward
-    nextStatuses = isTaskManager ? nextStatuses.filter(status => 
+    nextStatuses = isTaskManager ? nextStatuses.filter(status =>
       (task.status === 'PENDING_APPROVAL' && status === 'ASSIGNED') ||
       (task.status === 'ASSIGNED' && status === 'IN_DEVELOPMENT') ||
       (['RETURNED_TO_DEVELOPER', 'DELAYED', 'ON_HOLD'].includes(task.status) && status === 'IN_DEVELOPMENT')
     ) : [];
   } else if (currentUser?.role === 'DEVELOPER') {
-    nextStatuses = nextStatuses.filter(status => 
+    nextStatuses = nextStatuses.filter(status =>
       (task.status === 'IN_DEVELOPMENT' && status === 'VERIFYING') ||
       (['RETURNED_TO_DEVELOPER', 'DELAYED', 'ON_HOLD'].includes(task.status) && status === 'IN_DEVELOPMENT')
     );
   } else if (currentUser?.role === 'VERIFIER') {
-    nextStatuses = nextStatuses.filter(status => 
-      (task.status === 'VERIFYING' && [
-        'COMPLETED', 'RETURNED_TO_DEVELOPER', 'REJECTED', 'ON_HOLD', 'CANCELLED'
-      ].includes(status))
+    nextStatuses = nextStatuses.filter(status =>
+    (task.status === 'VERIFYING' && [
+      'COMPLETED', 'RETURNED_TO_DEVELOPER', 'REJECTED', 'ON_HOLD', 'CANCELLED'
+    ].includes(status))
     );
   } else {
     nextStatuses = [];
@@ -240,7 +240,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!newStatus) return;
-    
+
     let reason = '';
     if (newStatus === 'PENDING_APPROVAL') {
       reason = 'Submitted for manager review';
@@ -311,8 +311,8 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
       const allSelectedIds = [...selectedManagerIds, ...selectedDevIds, ...selectedVerIds];
       const usersToMap = usersList.filter(
         (u) => allSelectedIds.includes(u.id || u.userId || '') &&
-               task.moduleId &&
-               !(u.modules || []).some((m: any) => m.id === task.moduleId || m.moduleId === task.moduleId)
+          task.moduleId &&
+          !(u.modules || []).some((m: any) => m.id === task.moduleId || m.moduleId === task.moduleId)
       );
 
       if (usersToMap.length > 0 && task.moduleId) {
@@ -360,7 +360,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
       }
       setEditStatus(updated.status);
       setIsEditingAssignments(false);
-      
+
       if (onUpdated) {
         onUpdated(updated);
       }
@@ -541,7 +541,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-        
+
         <div className="relative bg-gray-900 border border-gray-700 shadow-2xl rounded-2xl w-[95vw] md:max-w-2xl lg:max-w-4xl max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 text-white">
           <div className="flex items-start justify-between p-4 sm:p-6 border-b border-gray-800 bg-gray-800/30 shrink-0">
             <div>
@@ -703,15 +703,15 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
               <div className="flex justify-end gap-3 border-t border-gray-800 pt-4">
                 {isEditingClientFields ? (
                   <>
-                    <button 
-                      onClick={() => setIsEditingClientFields(false)} 
+                    <button
+                      onClick={() => setIsEditingClientFields(false)}
                       disabled={updating}
                       className="rounded-2xl border border-gray-700 px-5 py-3 text-sm text-gray-300 hover:bg-gray-800 transition-colors disabled:opacity-60"
                     >
                       Cancel
                     </button>
-                    <button 
-                      onClick={saveClientFields} 
+                    <button
+                      onClick={saveClientFields}
                       disabled={updating}
                       className="inline-flex items-center justify-center rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-white hover:bg-primary-400 transition-colors disabled:opacity-60"
                     >
@@ -723,14 +723,14 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     <button onClick={onClose} className="rounded-2xl border border-gray-700 px-5 py-3 text-sm text-gray-300 hover:bg-gray-800 transition-colors">
                       Close
                     </button>
-                    <button 
-                      onClick={() => setIsEditingClientFields(true)} 
+                    <button
+                      onClick={() => setIsEditingClientFields(true)}
                       className="rounded-2xl border border-gray-700 px-5 py-3 text-sm text-gray-300 hover:bg-gray-800 transition-colors"
                     >
                       Edit Details
                     </button>
-                    <button 
-                      onClick={() => handleStatusUpdate('PENDING_APPROVAL')} 
+                    <button
+                      onClick={() => handleStatusUpdate('PENDING_APPROVAL')}
                       disabled={updating}
                       className="inline-flex items-center justify-center rounded-2xl bg-primary-500 px-5 py-3 text-sm font-semibold text-white hover:bg-primary-400 transition-colors disabled:opacity-60"
                     >
@@ -750,9 +750,9 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      
+
       <div className="relative bg-gray-900 border border-gray-700 shadow-2xl rounded-2xl w-[95vw] md:max-w-3xl lg:max-w-5xl max-h-[95vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="flex items-start justify-between p-4 sm:p-6 border-b border-gray-800 bg-gray-800/30 shrink-0">
           <div>
@@ -789,7 +789,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 custom-scrollbar">
-          
+
           {/* Main Content Area */}
           <div className="lg:col-span-2 space-y-8">
             <section>
@@ -807,8 +807,8 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
               <div className="space-y-4">
                 <form onSubmit={handleCommentSubmit} className="space-y-3">
                   <div className="flex gap-3">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={commentText}
                       onChange={(e) => setCommentText(e.target.value)}
                       placeholder="Write a comment..."
@@ -886,7 +886,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     </div>
                   )}
                 </form>
-                
+
                 <div className="space-y-4 mt-6">
                   {task.comments && task.comments.length > 0 ? (
                     task.comments.map((comment: any) => (
@@ -910,7 +910,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                             </div>
                           </div>
                           <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
-                          
+
                           {/* Ordered comment attachments list */}
                           {comment.files && Array.isArray(comment.files) && comment.files.length > 0 && (
                             <div className="mt-3 pt-2.5 border-t border-gray-700/40 flex flex-wrap gap-2">
@@ -950,16 +950,16 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
 
           {/* Sidebar */}
           <div className="space-y-6">
-            
+
             {/* Quick Actions (Update Workflow Status) */}
             {nextStatuses.length > 0 && (
               <div className="bg-gray-800/50 rounded-xl p-5 border border-gray-700/50">
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2 text-white">
+                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2 text-white">
                   <CheckCircle2 size={16} /> Move to Next Stage
                 </h3>
                 <div className="flex flex-col gap-2">
-                  <select 
-                    value="" 
+                  <select
+                    value=""
                     onChange={(e) => handleStatusUpdate(e.target.value)}
                     disabled={updating || isDeleted}
                     className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-primary-500 transition-colors disabled:opacity-50"
@@ -1057,7 +1057,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                   <Users size={16} /> Resources
                 </h3>
                 {canEditResources && !isDeleted && (
-                  <button 
+                  <button
                     onClick={() => {
                       if (isEditingAssignments) {
                         saveAssignments();
@@ -1244,18 +1244,17 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                   type="button"
                   onClick={handleDeleteRestore}
                   disabled={updating}
-                  className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition disabled:opacity-50 ${
-                    isDeleted
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition disabled:opacity-50 ${isDeleted
                       ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
                       : 'bg-red-600/90 hover:bg-red-500 text-white'
-                  }`}
+                    }`}
                 >
                   {isDeleted ? <RotateCcw size={16} /> : <Trash2 size={16} />}
                   {isDeleted ? 'Restore Patch' : 'Soft Delete Patch'}
                 </button>
               </div>
             )}
-            
+
             {/* Attachments Section */}
             <div className="bg-gray-800/50 rounded-xl p-5 border border-gray-700/50 text-white">
               <div className="flex justify-between items-center mb-4">
@@ -1341,27 +1340,27 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
               <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Dates</h3>
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500 flex items-center gap-1"><CalendarDays size={14}/> Given</span>
+                  <span className="text-gray-500 flex items-center gap-1"><CalendarDays size={14} /> Given</span>
                   <span className="text-gray-300">{task.dateGiven ? new Date(task.dateGiven).toLocaleDateString() : new Date(task.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500 flex items-center gap-1"><Clock size={14}/> Started</span>
+                  <span className="text-gray-500 flex items-center gap-1"><Clock size={14} /> Started</span>
                   <span className="text-gray-300">{task.dateStarted ? new Date(task.dateStarted).toLocaleDateString() : 'Not started'}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500 flex items-center gap-1"><CheckCircle2 size={14}/> Ended</span>
+                  <span className="text-gray-500 flex items-center gap-1"><CheckCircle2 size={14} /> Ended</span>
                   <span className="text-gray-300">{task.dateEnded ? new Date(task.dateEnded).toLocaleDateString() : 'In progress'}</span>
                 </div>
                 {getClientDeadline(task.description) && (
                   <div className="flex justify-between items-center text-sm border-t border-gray-700/30 pt-2 mt-2">
-                    <span className="text-gray-500 flex items-center gap-1 font-semibold"><Clock size={14}/> Requested Deadline</span>
+                    <span className="text-gray-500 flex items-center gap-1 font-semibold"><Clock size={14} /> Requested Deadline</span>
                     <span className="text-primary-300 font-medium font-mono">{new Date(getClientDeadline(task.description)!).toLocaleDateString()}</span>
                   </div>
                 )}
                 {/* Bug 2 fix: Inline editable Approved Deadline */}
                 <div className="border-t border-gray-700/30 pt-2 mt-2">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500 flex items-center gap-1 font-semibold"><CheckCircle2 size={14}/> Approved Deadline</span>
+                    <span className="text-gray-500 flex items-center gap-1 font-semibold"><CheckCircle2 size={14} /> Approved Deadline</span>
                     {!isEditingDeadline ? (
                       <div className="flex items-center gap-2">
                         {task.plannedEndDate ? (
@@ -1433,22 +1432,20 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                 <button
                   type="button"
                   onClick={() => setActiveTab('timeline')}
-                  className={`text-sm font-semibold uppercase tracking-wider flex items-center gap-2 pb-1 transition-colors border-b-2 ${
-                    activeTab === 'timeline'
+                  className={`text-sm font-semibold uppercase tracking-wider flex items-center gap-2 pb-1 transition-colors border-b-2 ${activeTab === 'timeline'
                       ? 'text-primary-400 border-primary-500'
                       : 'text-gray-400 border-transparent hover:text-gray-200'
-                  }`}
+                    }`}
                 >
                   <Clock size={16} /> Workflow Timeline
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('audit')}
-                  className={`text-sm font-semibold uppercase tracking-wider flex items-center gap-2 pb-1 transition-colors border-b-2 ${
-                    activeTab === 'audit'
+                  className={`text-sm font-semibold uppercase tracking-wider flex items-center gap-2 pb-1 transition-colors border-b-2 ${activeTab === 'audit'
                       ? 'text-primary-400 border-primary-500'
                       : 'text-gray-400 border-transparent hover:text-gray-200'
-                  }`}
+                    }`}
                 >
                   <Users size={16} /> Audit Trail
                 </button>
@@ -1467,7 +1464,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                         <div key={i} className="relative pl-7 text-sm group animate-in slide-in-from-left duration-200">
                           {/* Bullet indicator */}
                           <div className="absolute left-[3px] top-1.5 w-4 h-4 rounded-full bg-primary-600 border-4 border-gray-900 group-hover:bg-primary-500 transition-colors shadow-[0_0_8px_rgba(59,130,246,0.3)] -translate-x-1" />
-                          
+
                           <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-800/80 hover:border-gray-700/80 transition-all space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-gray-500 font-medium">
                               <span className="text-gray-400 font-semibold truncate max-w-[200px]" title={task.title}>Patch: {task.title}</span>
@@ -1509,7 +1506,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                         <div key={i} className="relative pl-7 text-sm group animate-in slide-in-from-left duration-200">
                           {/* Bullet indicator */}
                           <div className="absolute left-[3px] top-1.5 w-4 h-4 rounded-full bg-yellow-600 border-4 border-gray-900 group-hover:bg-yellow-500 transition-colors shadow-[0_0_8px_rgba(202,138,4,0.3)] -translate-x-1" />
-                          
+
                           <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-800/80 hover:border-gray-700/80 transition-all space-y-2">
                             <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-gray-500 font-medium">
                               <span className="text-gray-400 font-semibold truncate max-w-[200px]" title={task.title}>Field: {log.fieldChanged}</span>

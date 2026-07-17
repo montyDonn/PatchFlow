@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import api from '../api/client';
-import { 
-  BarChart3, 
-  Calendar, 
+import {
+  BarChart3,
+  Calendar,
   ChevronDown,
   ChevronUp,
-  FileSpreadsheet, 
-  Filter, 
+  FileSpreadsheet,
+  Filter,
   MessageSquare,
-  RotateCcw, 
+  RotateCcw,
   Search
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -82,7 +82,7 @@ const STATUSES = [
 
 export default function ReportsPage() {
   const currentUser = useAuthStore(state => state.user);
-  
+
   // Data lists
   const [tasks, setTasks] = useState<Task[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -153,8 +153,8 @@ export default function ReportsPage() {
     }
     fetchReportData();
   }, [
-    viewPreset, startDate, endDate, selectedModule, 
-    selectedClient, selectedManager, selectedDeveloper, 
+    viewPreset, startDate, endDate, selectedModule,
+    selectedClient, selectedManager, selectedDeveloper,
     selectedVerifier, selectedStatus
   ]);
 
@@ -173,7 +173,7 @@ export default function ReportsPage() {
   };
 
   // Filter tasks locally by search query
-  const filteredTasks = tasks.filter(t => 
+  const filteredTasks = tasks.filter(t =>
     t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (t.module?.name || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -223,7 +223,7 @@ export default function ReportsPage() {
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Changes Report");
-    
+
     const maxLens = Object.keys(excelData[0] || {}).map(key => {
       let maxLen = key.length;
       excelData.forEach(row => {
@@ -243,7 +243,7 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      
+
       {/* Header section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -251,15 +251,15 @@ export default function ReportsPage() {
             <BarChart3 className="text-primary-500" /> {isClient ? 'My Change Reports' : 'System Reports'}
           </h2>
           <p className="text-gray-400 text-sm mt-1">
-            {isClient 
-              ? 'View real-time progress and timeline summaries of your change requests.' 
+            {isClient
+              ? 'View real-time progress and timeline summaries of your change requests.'
               : 'Detailed breakdown, status summaries, and export capabilities for all active change workflows.'
             }
           </p>
         </div>
 
         <div className="flex gap-3">
-          <button 
+          <button
             onClick={handleExportExcel}
             disabled={filteredTasks.length === 0}
             className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700/80 border border-gray-700/60 text-gray-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -271,7 +271,7 @@ export default function ReportsPage() {
 
       {/* Control / Filter Bar */}
       <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 space-y-4">
-        
+
         {/* Preset & Time Controls */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-800 pb-4">
           <div className="flex items-center gap-2">
@@ -279,31 +279,28 @@ export default function ReportsPage() {
             <div className="bg-gray-950 p-1 rounded-xl flex gap-1 border border-gray-800">
               <button
                 onClick={() => setViewPreset('weekly')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  viewPreset === 'weekly' 
-                    ? 'bg-primary-500 text-white shadow-lg' 
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewPreset === 'weekly'
+                    ? 'bg-primary-500 text-white shadow-lg'
                     : 'text-gray-400 hover:text-white'
-                }`}
+                  }`}
               >
                 Weekly
               </button>
               <button
                 onClick={() => setViewPreset('monthly')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  viewPreset === 'monthly' 
-                    ? 'bg-primary-500 text-white shadow-lg' 
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewPreset === 'monthly'
+                    ? 'bg-primary-500 text-white shadow-lg'
                     : 'text-gray-400 hover:text-white'
-                }`}
+                  }`}
               >
                 Monthly
               </button>
               <button
                 onClick={() => setViewPreset('custom')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  viewPreset === 'custom' 
-                    ? 'bg-primary-500 text-white shadow-lg' 
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewPreset === 'custom'
+                    ? 'bg-primary-500 text-white shadow-lg'
                     : 'text-gray-400 hover:text-white'
-                }`}
+                  }`}
               >
                 Custom Range
               </button>
@@ -316,20 +313,20 @@ export default function ReportsPage() {
               <div className="flex items-center gap-2 bg-gray-950 border border-gray-800 rounded-xl px-3 py-2">
                 <Calendar size={14} className="text-gray-500" />
                 <span className="text-gray-400">From:</span>
-                <input 
-                  type="date" 
-                  value={startDate} 
-                  onChange={(e) => setStartDate(e.target.value)} 
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
                   className="bg-transparent border-0 text-white focus:ring-0 focus:outline-none"
                 />
               </div>
               <div className="flex items-center gap-2 bg-gray-950 border border-gray-800 rounded-xl px-3 py-2">
                 <Calendar size={14} className="text-gray-500" />
                 <span className="text-gray-400">To:</span>
-                <input 
-                  type="date" 
-                  value={endDate} 
-                  onChange={(e) => setEndDate(e.target.value)} 
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                   className="bg-transparent border-0 text-white focus:ring-0 focus:outline-none"
                 />
               </div>
@@ -337,7 +334,7 @@ export default function ReportsPage() {
           )}
 
           {/* Reset Filters button */}
-          <button 
+          <button
             onClick={resetFilters}
             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-primary-400 transition-colors cursor-pointer"
           >
@@ -347,7 +344,7 @@ export default function ReportsPage() {
 
         {/* Dropdown Filters Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-          
+
           {/* Module Select */}
           <div className="space-y-1">
             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Module</label>
@@ -445,7 +442,7 @@ export default function ReportsPage() {
         {/* Local Search Query */}
         <div className="relative">
           <Search size={14} className="absolute left-3.5 top-3 text-gray-500" />
-          <input 
+          <input
             type="text"
             placeholder="Search report by change name or module name..."
             value={searchQuery}
@@ -542,13 +539,12 @@ export default function ReportsPage() {
                           {task.verifiers.map(v => v.name).join(', ') || 'N/A'}
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                            task.status === 'COMPLETED' 
-                              ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${task.status === 'COMPLETED'
+                              ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                               : task.status === 'IN_DEVELOPMENT'
-                              ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20'
-                              : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                          }`}>
+                                ? 'bg-primary-500/10 text-primary-400 border border-primary-500/20'
+                                : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                            }`}>
                             {getStatusLabel(task.status)}
                           </span>
                         </td>
@@ -572,22 +568,20 @@ export default function ReportsPage() {
                               <div className="flex gap-4 border-b border-gray-700 mb-4 pb-2">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setExpandedTab('comments'); }}
-                                  className={`flex items-center gap-1.5 text-xs font-semibold pb-1 border-b-2 transition-colors ${
-                                    expandedTab === 'comments'
+                                  className={`flex items-center gap-1.5 text-xs font-semibold pb-1 border-b-2 transition-colors ${expandedTab === 'comments'
                                       ? 'text-primary-400 border-primary-500'
                                       : 'text-gray-500 border-transparent hover:text-gray-300'
-                                  }`}
+                                    }`}
                                 >
                                   <MessageSquare size={12} />
                                   Comments ({commentCount})
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setExpandedTab('history'); }}
-                                  className={`flex items-center gap-1.5 text-xs font-semibold pb-1 border-b-2 transition-colors ${
-                                    expandedTab === 'history'
+                                  className={`flex items-center gap-1.5 text-xs font-semibold pb-1 border-b-2 transition-colors ${expandedTab === 'history'
                                       ? 'text-primary-400 border-primary-500'
                                       : 'text-gray-500 border-transparent hover:text-gray-300'
-                                  }`}
+                                    }`}
                                 >
                                   <RotateCcw size={12} />
                                   Workflow History ({historyCount})

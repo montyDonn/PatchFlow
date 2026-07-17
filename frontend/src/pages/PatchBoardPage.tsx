@@ -62,11 +62,11 @@ const COLUMNS = [
 export default function PatchBoardPage() {
   const currentUser = useAuthStore((state) => state.user);
   const canCreatePatch = currentUser?.role === 'SUPER_ADMIN' ||
-                         currentUser?.role === 'MANAGER' ||
-                         currentUser?.role === 'DEVELOPER' ||
-                         currentUser?.role === 'CLIENT';
-  const { 
-    tasks, modules, users, loading, error, 
+    currentUser?.role === 'MANAGER' ||
+    currentUser?.role === 'DEVELOPER' ||
+    currentUser?.role === 'CLIENT';
+  const {
+    tasks, modules, users, loading, error,
     search, setSearch,
     selectedModule, setSelectedModule,
     selectedAssignee, setSelectedAssignee,
@@ -134,7 +134,7 @@ export default function PatchBoardPage() {
         <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 bg-gray-800/40 p-3 rounded-xl border border-gray-700/50">
           <div className="w-full sm:flex-1 relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
+            <input
               type="text"
               placeholder="Search by name, ID, developer, manager, client..."
               value={search}
@@ -142,10 +142,10 @@ export default function PatchBoardPage() {
               className="w-full pl-9 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-primary-500 transition-colors"
             />
           </div>
-          
+
           <div className="w-full sm:w-auto flex items-center gap-2">
             <Filter size={16} className="text-gray-400 hidden sm:block" />
-            <select 
+            <select
               value={selectedModule}
               onChange={(e) => setSelectedModule(e.target.value)}
               className="w-full sm:w-auto bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500 transition-colors"
@@ -158,7 +158,7 @@ export default function PatchBoardPage() {
           </div>
 
           <div className="w-full sm:w-auto flex items-center gap-2">
-            <select 
+            <select
               value={selectedAssignee}
               onChange={(e) => setSelectedAssignee(e.target.value)}
               className="w-full sm:w-auto bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary-500 transition-colors"
@@ -199,7 +199,7 @@ export default function PatchBoardPage() {
             }
 
             return (
-              <PatchColumn 
+              <PatchColumn
                 key={col.id}
                 id={col.id}
                 title={col.title}
@@ -216,7 +216,7 @@ export default function PatchBoardPage() {
 
       {/* Task Details Modal */}
       {selectedTask && (
-        <PatchDetailsModal 
+        <PatchDetailsModal
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
           onStatusChange={async (id, status, reason) => {

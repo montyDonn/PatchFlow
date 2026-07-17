@@ -1,6 +1,5 @@
 package com.patchflow.entity;
 
-import com.patchflow.config.UUIDStringConverter;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;

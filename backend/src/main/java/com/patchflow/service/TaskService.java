@@ -382,7 +382,6 @@ public class TaskService {
         finalDevIds.forEach(id -> taskRepository.upsertDeveloper(taskId, id));
         finalVerIds.forEach(id -> taskRepository.upsertVerifier(taskId, id));
 
-
         statusHistoryRepository.save(StatusHistory.builder()
                 .taskId(task.getId()).previousStatus("DRAFT").newStatus(initialStatus)
                 .changedById(authorId).changedByName(actor.getName())
@@ -568,7 +567,8 @@ public class TaskService {
         if (recipient == null)
             return;
 
-        // In-App Notification (always, which delegates queueing to UPCLNotificationService)
+        // In-App Notification (always, which delegates queueing to
+        // UPCLNotificationService)
         try {
             notificationService.createNotification(recipient.getUserId(), type, msg);
         } catch (Exception e) {
@@ -664,11 +664,13 @@ public class TaskService {
         taskRepository.save(task);
 
         // Trigger notifications if commenter is a manager or admin
-        boolean isManager = "MANAGER".equals(actor.getRole()) || "ADMIN".equals(actor.getRole()) || "SUPER_ADMIN".equals(actor.getRole()) ||
+        boolean isManager = "MANAGER".equals(actor.getRole()) || "ADMIN".equals(actor.getRole())
+                || "SUPER_ADMIN".equals(actor.getRole()) ||
                 task.getManagers().stream().anyMatch(m -> m.getUserId().equals(actorId));
 
         if (isManager) {
-            String commentMsg = "Manager " + actor.getName() + " added a comment to patch \"" + task.getTitle() + "\": " + content.trim();
+            String commentMsg = "Manager " + actor.getName() + " added a comment to patch \"" + task.getTitle() + "\": "
+                    + content.trim();
             // Notify developers
             task.getDevelopers().forEach(d -> {
                 try {

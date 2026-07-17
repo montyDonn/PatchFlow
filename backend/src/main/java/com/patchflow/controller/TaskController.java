@@ -23,7 +23,7 @@ public class TaskController {
 
     @PostMapping
     public ResponseEntity<?> createTask(@RequestBody Map<String, Object> body, HttpServletRequest req) {
-        User user = Auth.requireRole(req, "SUPER_ADMIN","CLIENT","MANAGER","DEVELOPER");
+        User user = Auth.requireRole(req, "SUPER_ADMIN", "CLIENT", "MANAGER", "DEVELOPER");
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> result = taskService.createTask(
@@ -34,16 +34,15 @@ public class TaskController {
                     (String) body.get("teamId"),
                     (String) body.get("clientId"),
                     body.get("clientRequestId") != null ? ((Number) body.get("clientRequestId")).intValue() : null,
-                    body.get("managerIds") != null ? (List<String>) body.get("managerIds") :
-                            (body.get("managerId") != null ? List.of((String) body.get("managerId")) : null),
+                    body.get("managerIds") != null ? (List<String>) body.get("managerIds")
+                            : (body.get("managerId") != null ? List.of((String) body.get("managerId")) : null),
                     (List<String>) body.get("developerIds"),
                     (List<String>) body.get("verifierIds"),
                     (String) body.get("dateGiven"),
                     body.get("lifecycleStatus") != null ? ((Number) body.get("lifecycleStatus")).intValue() : 0,
                     (String) body.get("plannedStartDate"),
                     (String) body.get("plannedEndDate"),
-                    body.get("isInternal") != null ? (Boolean) body.get("isInternal") : false
-            );
+                    body.get("isInternal") != null ? (Boolean) body.get("isInternal") : false);
             return ResponseEntity.status(HttpStatus.CREATED).body(result);
         } catch (ResponseStatusException ex) {
             return ResponseEntity.status(ex.getStatusCode()).body(Map.of("error", ex.getReason()));
@@ -63,7 +62,8 @@ public class TaskController {
     public ResponseEntity<?> getTaskById(@PathVariable String id, HttpServletRequest req) {
         User user = Auth.require(req);
         Map<String, Object> task = taskService.getTaskById(id);
-        if (task == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Task not found"));
+        if (task == null)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Task not found"));
         try {
             taskService.checkReadPermission(task, user.getUserId(), user.getRole());
         } catch (ResponseStatusException ex) {
@@ -73,11 +73,13 @@ public class TaskController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<?> updateStatus(@PathVariable String id, @RequestBody Map<String, Object> body, HttpServletRequest req) {
+    public ResponseEntity<?> updateStatus(@PathVariable String id, @RequestBody Map<String, Object> body,
+            HttpServletRequest req) {
         User user = Auth.require(req);
         String status = (String) body.get("status");
         String reason = (String) body.get("reason");
-        if (status == null) return ResponseEntity.badRequest().body(Map.of("error", "Missing required fields"));
+        if (status == null)
+            return ResponseEntity.badRequest().body(Map.of("error", "Missing required fields"));
         try {
             return ResponseEntity.ok(taskService.updateStatus(id, user.getUserId(), status, reason));
         } catch (ResponseStatusException ex) {
@@ -86,12 +88,15 @@ public class TaskController {
     }
 
     @PostMapping("/{id}/comments")
-    public ResponseEntity<?> addComment(@PathVariable String id, @RequestBody Map<String, Object> body, HttpServletRequest req) {
+    public ResponseEntity<?> addComment(@PathVariable String id, @RequestBody Map<String, Object> body,
+            HttpServletRequest req) {
         User user = Auth.require(req);
         String content = (String) body.get("content");
-        if (content == null) return ResponseEntity.badRequest().body(Map.of("error", "Missing required fields"));
+        if (content == null)
+            return ResponseEntity.badRequest().body(Map.of("error", "Missing required fields"));
         try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(taskService.addComment(id, user.getUserId(), content, body.get("files")));
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(taskService.addComment(id, user.getUserId(), content, body.get("files")));
         } catch (ResponseStatusException ex) {
             return ResponseEntity.status(ex.getStatusCode()).body(Map.of("error", ex.getReason()));
         }
@@ -104,7 +109,8 @@ public class TaskController {
             HttpServletRequest req) {
         User user = Auth.require(req);
         try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(taskService.uploadAttachment(id, user.getUserId(), file));
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(taskService.uploadAttachment(id, user.getUserId(), file));
         } catch (ResponseStatusException ex) {
             return ResponseEntity.status(ex.getStatusCode()).body(Map.of("error", ex.getReason()));
         }
@@ -131,10 +137,12 @@ public class TaskController {
     }
 
     @PostMapping("/{id}/assign")
-    public ResponseEntity<?> assign(@PathVariable String id, @RequestBody Map<String, String> body, HttpServletRequest req) {
+    public ResponseEntity<?> assign(@PathVariable String id, @RequestBody Map<String, String> body,
+            HttpServletRequest req) {
         User user = Auth.require(req);
         String assigneeId = body.get("assigneeId");
-        if (assigneeId == null) return ResponseEntity.badRequest().body(Map.of("error", "Missing required fields"));
+        if (assigneeId == null)
+            return ResponseEntity.badRequest().body(Map.of("error", "Missing required fields"));
         try {
             return ResponseEntity.ok(taskService.assignTask(id, assigneeId, user.getUserId()));
         } catch (ResponseStatusException ex) {
@@ -143,7 +151,8 @@ public class TaskController {
     }
 
     @PatchMapping("/{id}/details")
-    public ResponseEntity<?> updateDetails(@PathVariable String id, @RequestBody Map<String, Object> body, HttpServletRequest req) {
+    public ResponseEntity<?> updateDetails(@PathVariable String id, @RequestBody Map<String, Object> body,
+            HttpServletRequest req) {
         User user = Auth.require(req);
         try {
             return ResponseEntity.ok(taskService.updateTaskDetails(id, body, user.getUserId()));
