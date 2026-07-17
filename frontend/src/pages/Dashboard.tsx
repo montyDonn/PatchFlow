@@ -8,6 +8,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { PatchDetailsModal } from '../components/patches/PatchDetailsModal';
+import type { Task } from '../api/tasks';
 
 interface DashboardTask {
   id: string;
@@ -269,7 +270,7 @@ const Dashboard = () => {
   const [selectedStage, setSelectedStage] = useState<string | null>(null);
   const [stageTasks, setStageTasks] = useState<DashboardTask[]>([]);
   const [stageLoading, setStageLoading] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleTaskClick = async (taskId: string) => {
@@ -317,8 +318,8 @@ const Dashboard = () => {
     }
   };
 
-  const handleUpdated = async (updatedTask: any) => {
-    setSelectedTask((current) => (current === null ? null : updatedTask));
+  const handleUpdated = async (updatedTask: Task) => {
+    setSelectedTask((current: Task | null) => (current === null ? null : updatedTask));
     await fetchData();
     if (selectedStage) {
       const res = await api.get(`/tasks?status=${selectedStage}`);
