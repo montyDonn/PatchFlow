@@ -96,6 +96,7 @@ export function useTasks() {
     } catch (err) {
       console.error('Failed to update task status', err);
       alert('Failed to update task status');
+      throw err;
     }
   };
 

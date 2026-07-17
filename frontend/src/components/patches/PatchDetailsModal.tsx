@@ -256,6 +256,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     setError('');
     try {
       await onStatusChange(task.id, newStatus, reason);
+      onClose();
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to update workflow.');
     } finally {
@@ -363,6 +364,9 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
       if (onUpdated) {
         onUpdated(updated);
       }
+      if (updated.status !== task.status) {
+        onClose();
+      }
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to save resource assignments.');
     } finally {
@@ -428,7 +432,12 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
         setEditPlannedEndDate(updated.plannedEndDate.split('T')[0]);
       setEditStatus(updated.status);
 
-      if (onUpdated) onUpdated(updated);
+      if (onUpdated) {
+        onUpdated(updated);
+      }
+      if (updated.status !== task.status) {
+        onClose();
+      }
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Failed to approve and assign resources.');
     } finally {

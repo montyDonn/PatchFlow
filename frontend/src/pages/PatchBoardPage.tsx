@@ -237,7 +237,7 @@ export default function PatchBoardPage() {
           }}
           onUpdated={async (updatedTask) => {
             await refresh();
-            setSelectedTask(updatedTask);
+            setSelectedTask((current) => (current === null ? null : updatedTask));
           }}
         />
       )}

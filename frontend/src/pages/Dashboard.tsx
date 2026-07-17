@@ -318,7 +318,7 @@ const Dashboard = () => {
   };
 
   const handleUpdated = async (updatedTask: any) => {
-    setSelectedTask(updatedTask);
+    setSelectedTask((current) => (current === null ? null : updatedTask));
     await fetchData();
     if (selectedStage) {
       const res = await api.get(`/tasks?status=${selectedStage}`);
