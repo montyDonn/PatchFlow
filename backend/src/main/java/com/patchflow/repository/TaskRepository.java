@@ -94,4 +94,30 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     @Query(value = "INSERT INTO change_req_TaskVerifiers (A, B, is_active) VALUES (:taskId, :verifierId, true) " +
                    "ON DUPLICATE KEY UPDATE is_active = true", nativeQuery = true)
     void upsertVerifier(@Param("taskId") String taskId, @Param("verifierId") String verifierId);
+
+    /** Fetch task + testers only. */
+    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN FETCH t.testers WHERE t.id = :id")
+    Optional<Task> findByIdWithTesters(@Param("id") String id);
+
+    /** Fetch task + deployers only. */
+    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN FETCH t.deployers WHERE t.id = :id")
+    Optional<Task> findByIdWithDeployers(@Param("id") String id);
+
+    @Modifying
+    @Query(value = "UPDATE change_req_TaskTesters SET is_active = false WHERE A = :taskId", nativeQuery = true)
+    void deactivateTestersByTaskId(@Param("taskId") String taskId);
+
+    @Modifying
+    @Query(value = "INSERT INTO change_req_TaskTesters (A, B, is_active) VALUES (:taskId, :testerId, true) " +
+                   "ON DUPLICATE KEY UPDATE is_active = true", nativeQuery = true)
+    void upsertTester(@Param("taskId") String taskId, @Param("testerId") String testerId);
+
+    @Modifying
+    @Query(value = "UPDATE change_req_TaskDeployers SET is_active = false WHERE A = :taskId", nativeQuery = true)
+    void deactivateDeployersByTaskId(@Param("taskId") String taskId);
+
+    @Modifying
+    @Query(value = "INSERT INTO change_req_TaskDeployers (A, B, is_active) VALUES (:taskId, :deployerId, true) " +
+                   "ON DUPLICATE KEY UPDATE is_active = true", nativeQuery = true)
+    void upsertDeployerToList(@Param("taskId") String taskId, @Param("deployerId") String deployerId);
 }

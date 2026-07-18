@@ -71,7 +71,9 @@ const ROLE_COLORS: Record<string, string> = {
   ADMIN:       'bg-blue-500/20 text-blue-300 border-blue-500/30',
   MANAGER:     'bg-amber-500/20 text-amber-300 border-amber-500/30',
   DEVELOPER:   'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  TESTER:      'bg-rose-500/20 text-rose-300 border-rose-500/30',
   VERIFIER:    'bg-pink-500/20 text-pink-300 border-pink-500/30',
+  DEPLOYER:    'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
   CLIENT:      'bg-green-500/20 text-green-300 border-green-500/30',
 };
 
@@ -147,7 +149,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
           <div>
             <label className={labelCls}>Role</label>
             <select className={inputCls} value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
-              {['SUPER_ADMIN', 'MANAGER', 'DEVELOPER', 'VERIFIER', 'CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
+              {['SUPER_ADMIN', 'MANAGER', 'DEVELOPER', 'TESTER', 'VERIFIER', 'DEPLOYER', 'CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
           <div className="col-span-2">
@@ -245,7 +247,7 @@ function EditUserModal({ user, modules, onClose, onSaved }: {
               <label className={labelCls}>Role</label>
               <select className={inputCls} value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
                 disabled={user.userId === currentUser?.id}>
-                {['SUPER_ADMIN', 'MANAGER', 'DEVELOPER', 'VERIFIER', 'CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
+                {['SUPER_ADMIN', 'MANAGER', 'DEVELOPER', 'TESTER', 'VERIFIER', 'DEPLOYER', 'CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
             <div>
@@ -429,7 +431,7 @@ function UsersTab({ push }: { push: (type: 'success' | 'error', message: string)
               className="appearance-none rounded-xl border border-gray-700 bg-gray-900 px-3 py-2 pr-8 text-sm text-white outline-none focus:border-primary-500"
             >
               <option value="">All Roles</option>
-              {['SUPER_ADMIN','MANAGER','DEVELOPER','VERIFIER','CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
+              {['SUPER_ADMIN','MANAGER','DEVELOPER','TESTER','VERIFIER','DEPLOYER','CLIENT'].map(r => <option key={r} value={r}>{r}</option>)}
             </select>
             <ChevronDown className="absolute right-2 top-2.5 text-gray-500 pointer-events-none" size={14} />
           </div>

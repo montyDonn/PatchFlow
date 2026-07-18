@@ -23,7 +23,7 @@ public class TaskController {
 
     @PostMapping
     public ResponseEntity<?> createTask(@RequestBody Map<String, Object> body, HttpServletRequest req) {
-        User user = Auth.requireRole(req, "SUPER_ADMIN", "CLIENT", "MANAGER", "DEVELOPER");
+        User user = Auth.requireRole(req, "SUPER_ADMIN", "CLIENT", "MANAGER", "DEVELOPER", "TESTER", "DEPLOYER");
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> result = taskService.createTask(
@@ -38,6 +38,9 @@ public class TaskController {
                             : (body.get("managerId") != null ? List.of((String) body.get("managerId")) : null),
                     (List<String>) body.get("developerIds"),
                     (List<String>) body.get("verifierIds"),
+                    (List<String>) body.get("testerIds"),
+                    (List<String>) body.get("deployerIds"),
+                    (String) body.get("deployerId"),
                     (String) body.get("dateGiven"),
                     body.get("lifecycleStatus") != null ? ((Number) body.get("lifecycleStatus")).intValue() : 0,
                     (String) body.get("plannedStartDate"),

@@ -50,8 +50,12 @@ const STATUSES = [
   { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
   { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_DEVELOPMENT', label: 'In Development' },
-  { value: 'VERIFYING', label: 'Verifying' },
+  { value: 'TESTING', label: 'Testing' },
+  { value: 'MANAGER_REVIEW', label: 'Manager Review' },
+  { value: 'DEPLOYMENT', label: 'Deployment' },
+  { value: 'FINAL_TESTING_OF_PATCH', label: 'Final Testing of Patch' },
   { value: 'COMPLETED', label: 'Completed' },
+  // Legacy / exception statuses
   { value: 'RETURNED_TO_DEVELOPER', label: 'Returned to Developer' },
   { value: 'REJECTED', label: 'Rejected' },
   { value: 'DELAYED', label: 'Delayed' },
@@ -60,14 +64,18 @@ const STATUSES = [
 ];
 
 const NEXT_STATUSES: Record<string, string[]> = {
-  DRAFT: ['PENDING_APPROVAL'],
-  PENDING_APPROVAL: ['ASSIGNED'],
+  DRAFT: ['PENDING_APPROVAL', 'CANCELLED'],
+  PENDING_APPROVAL: ['ASSIGNED', 'REJECTED', 'CANCELLED'],
   ASSIGNED: ['IN_DEVELOPMENT'],
-  IN_DEVELOPMENT: ['VERIFYING'],
-  VERIFYING: ['COMPLETED', 'RETURNED_TO_DEVELOPER', 'REJECTED', 'DELAYED', 'ON_HOLD', 'CANCELLED'],
+  IN_DEVELOPMENT: ['TESTING'],
+  TESTING: ['MANAGER_REVIEW', 'IN_DEVELOPMENT', 'COMPLETED', 'REJECTED', 'ON_HOLD', 'CANCELLED'],
+  MANAGER_REVIEW: ['DEPLOYMENT', 'IN_DEVELOPMENT', 'REJECTED', 'ON_HOLD', 'CANCELLED'],
+  DEPLOYMENT: ['FINAL_TESTING_OF_PATCH', 'ON_HOLD', 'CANCELLED'],
+  FINAL_TESTING_OF_PATCH: ['COMPLETED', 'IN_DEVELOPMENT'],
+  // Legacy statuses kept for backward compatibility
   RETURNED_TO_DEVELOPER: ['IN_DEVELOPMENT'],
   DELAYED: ['IN_DEVELOPMENT'],
-  ON_HOLD: ['IN_DEVELOPMENT'],
+  ON_HOLD: ['IN_DEVELOPMENT', 'ASSIGNED'],
   COMPLETED: [],
   REJECTED: [],
   CANCELLED: [],
@@ -84,7 +92,12 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   const [usersList, setUsersList] = useState<TaskUser[]>([]);
   const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
   const [selectedDevIds, setSelectedDevIds] = useState<string[]>([]);
+  const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>([]);
   const [selectedVerIds, setSelectedVerIds] = useState<string[]>([]);
+  const [selectedDeployerIds, setSelectedDeployerIds] = useState<string[]>([]);
+  const [editDeployerId, setEditDeployerId] = useState('');
+  const [editRollbackPlan, setEditRollbackPlan] = useState('');
+  const [editDeploymentTarget, setEditDeploymentTarget] = useState('');
   const [isEditingAssignments, setIsEditingAssignments] = useState(false);
   const [editDateStarted, setEditDateStarted] = useState('');
   const [editPlannedEndDate, setEditPlannedEndDate] = useState('');
@@ -138,27 +151,32 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     nextStatuses = nextStatuses.filter(s => s !== 'ASSIGNED');
   }
   if (currentUser?.role === 'SUPER_ADMIN') {
-    // Admins see all valid transitions from the matrix, no further filtering required
+    // Admins see all transitions
   } else if (currentUser?.role === 'CLIENT') {
-    nextStatuses = task.status === 'DRAFT' ? ['PENDING_APPROVAL'] : [];
+    nextStatuses = task.status === 'DRAFT' ? ['PENDING_APPROVAL', 'CANCELLED'] :
+                   task.status === 'FINAL_TESTING_OF_PATCH' ? ['COMPLETED', 'IN_DEVELOPMENT'] : [];
   } else if (currentUser?.role === 'MANAGER') {
-    // Only the assigned manager can move the patch forward
     nextStatuses = isTaskManager ? nextStatuses.filter(status =>
       (task.status === 'PENDING_APPROVAL' && status === 'ASSIGNED') ||
       (task.status === 'ASSIGNED' && status === 'IN_DEVELOPMENT') ||
-      (['RETURNED_TO_DEVELOPER', 'DELAYED', 'ON_HOLD'].includes(task.status) && status === 'IN_DEVELOPMENT')
+      (task.status === 'MANAGER_REVIEW' && ['DEPLOYMENT', 'IN_DEVELOPMENT', 'REJECTED', 'ON_HOLD', 'CANCELLED'].includes(status)) ||
+      (task.status === 'DEPLOYMENT' && ['FINAL_TESTING_OF_PATCH', 'ON_HOLD', 'CANCELLED'].includes(status)) ||
+      (task.status === 'FINAL_TESTING_OF_PATCH' && ['COMPLETED', 'IN_DEVELOPMENT'].includes(status)) ||
+      (['TESTING', 'RETURNED_TO_DEVELOPER', 'DELAYED', 'ON_HOLD'].includes(task.status) && status === 'IN_DEVELOPMENT')
     ) : [];
   } else if (currentUser?.role === 'DEVELOPER') {
     nextStatuses = nextStatuses.filter(status =>
-      (task.status === 'IN_DEVELOPMENT' && status === 'VERIFYING') ||
-      (['RETURNED_TO_DEVELOPER', 'DELAYED', 'ON_HOLD'].includes(task.status) && status === 'IN_DEVELOPMENT')
+      (task.status === 'IN_DEVELOPMENT' && status === 'TESTING') ||
+      (['TESTING', 'RETURNED_TO_DEVELOPER', 'DELAYED', 'ON_HOLD'].includes(task.status) && status === 'IN_DEVELOPMENT')
     );
   } else if (currentUser?.role === 'VERIFIER') {
-    nextStatuses = nextStatuses.filter(status =>
-    (task.status === 'VERIFYING' && [
-      'COMPLETED', 'RETURNED_TO_DEVELOPER', 'REJECTED', 'ON_HOLD', 'CANCELLED'
-    ].includes(status))
-    );
+    const isVerifier = task.verifiers?.some((v: any) => (v.id || v.userId) === currentUserId);
+    const isDeployer = currentUserId === task.deployerId;
+    nextStatuses = isVerifier ? nextStatuses.filter(status =>
+      (task.status === 'TESTING' && ['MANAGER_REVIEW', 'IN_DEVELOPMENT', 'COMPLETED', 'REJECTED', 'ON_HOLD', 'CANCELLED'].includes(status)) ||
+      (task.status === 'FINAL_TESTING_OF_PATCH' && ['COMPLETED', 'IN_DEVELOPMENT'].includes(status)) ||
+      (task.status === 'DEPLOYMENT' && status === 'FINAL_TESTING_OF_PATCH' && (isDeployer || isVerifier))
+    ) : [];
   } else {
     nextStatuses = [];
   }
@@ -176,9 +194,18 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     if (task.developers) {
       setSelectedDevIds(task.developers.map((d: any) => d.id || d.userId));
     }
+    if (task.testers) {
+      setSelectedTesterIds(task.testers.map((t: any) => t.id || t.userId));
+    }
     if (task.verifiers) {
       setSelectedVerIds(task.verifiers.map((v: any) => v.id || v.userId));
     }
+    if (task.deployers) {
+      setSelectedDeployerIds(task.deployers.map((d: any) => d.id || d.userId));
+    }
+    setEditDeployerId(task.deployerId || '');
+    setEditRollbackPlan(task.rollbackPlan || '');
+    setEditDeploymentTarget(task.deploymentTarget || '');
     if (task.dateStarted) {
       setEditDateStarted(task.dateStarted.split('T')[0]);
     } else {
@@ -212,7 +239,9 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
       canAssignResources &&
       task.status === 'ASSIGNED' &&
       (!task.developers || task.developers.length === 0) &&
-      (!task.verifiers || task.verifiers.length === 0)
+      (!task.testers || task.testers.length === 0) &&
+      (!task.verifiers || task.verifiers.length === 0) &&
+      (!task.deployers || task.deployers.length === 0)
     ) {
       setIsEditingAssignments(true);
       setAutoOpenedAssignment(true);
@@ -308,7 +337,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     setError('');
     try {
       // Auto-map selected users to the module if they do not belong to it
-      const allSelectedIds = [...selectedManagerIds, ...selectedDevIds, ...selectedVerIds];
+    const allSelectedIds = [...selectedManagerIds, ...selectedDevIds, ...selectedTesterIds, ...selectedVerIds, ...selectedDeployerIds];
       const usersToMap = usersList.filter(
         (u) => allSelectedIds.includes(u.id || u.userId || '') &&
           task.moduleId &&
@@ -329,7 +358,12 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
       const updated = await updateTaskDetails(task.id, {
         managerIds: selectedManagerIds,
         developerIds: selectedDevIds,
+        testerIds: selectedTesterIds,
         verifierIds: selectedVerIds,
+        deployerIds: selectedDeployerIds,
+        deployerId: editDeployerId || undefined,
+        rollbackPlan: editRollbackPlan || undefined,
+        deploymentTarget: editDeploymentTarget || undefined,
         status: editStatus,
         dateStarted: editDateStarted || undefined,
         plannedEndDate: editPlannedEndDate || undefined,
@@ -345,8 +379,14 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
       if (updated.developers) {
         setSelectedDevIds(updated.developers.map((d: any) => d.id || d.userId));
       }
+      if (updated.testers) {
+        setSelectedTesterIds(updated.testers.map((t: any) => t.id || t.userId));
+      }
       if (updated.verifiers) {
         setSelectedVerIds(updated.verifiers.map((v: any) => v.id || v.userId));
+      }
+      if (updated.deployers) {
+        setSelectedDeployerIds(updated.deployers.map((d: any) => d.id || d.userId));
       }
       if (updated.dateStarted) {
         setEditDateStarted(updated.dateStarted.split('T')[0]);
@@ -358,6 +398,9 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
       } else {
         setEditPlannedEndDate('');
       }
+      setEditDeployerId(updated.deployerId || '');
+      setEditRollbackPlan(updated.rollbackPlan || '');
+      setEditDeploymentTarget(updated.deploymentTarget || '');
       setEditStatus(updated.status);
       setIsEditingAssignments(false);
 
@@ -387,7 +430,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     setError('');
     try {
       // Auto-map users to the module if they are not already members
-      const allSelectedIds = [...selectedManagerIds, ...selectedDevIds, ...selectedVerIds];
+      const allSelectedIds = [...selectedManagerIds, ...selectedDevIds, ...selectedTesterIds, ...selectedVerIds, ...selectedDeployerIds];
       const usersToMap = usersList.filter(
         (u) =>
           allSelectedIds.includes(u.id || u.userId || '') &&
@@ -415,7 +458,9 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
       const updated = await updateTaskDetails(task.id, {
         managerIds: selectedManagerIds,
         developerIds: selectedDevIds,
+        testerIds: selectedTesterIds,
         verifierIds: selectedVerIds,
+        deployerIds: selectedDeployerIds,
         status: 'ASSIGNED',
         plannedEndDate: editPlannedEndDate,
         reason: 'Approved and assigned resources',
@@ -426,8 +471,12 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
         setSelectedManagerIds(updated.managers.map((m: any) => m.id || m.userId));
       if (updated.developers)
         setSelectedDevIds(updated.developers.map((d: any) => d.id || d.userId));
+      if (updated.testers)
+        setSelectedTesterIds(updated.testers.map((t: any) => t.id || t.userId));
       if (updated.verifiers)
         setSelectedVerIds(updated.verifiers.map((v: any) => v.id || v.userId));
+      if (updated.deployers)
+        setSelectedDeployerIds(updated.deployers.map((d: any) => d.id || d.userId));
       if (updated.plannedEndDate)
         setEditPlannedEndDate(updated.plannedEndDate.split('T')[0]);
       setEditStatus(updated.status);
@@ -534,8 +583,14 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     if (task.developers && task.developers.length > 0) {
       task.developers.forEach(d => assignedResources.push(`${getUserDisplayName(d)} (Developer)`));
     }
+    if (task.testers && task.testers.length > 0) {
+      task.testers.forEach(t => assignedResources.push(`${getUserDisplayName(t)} (Tester)`));
+    }
     if (task.verifiers && task.verifiers.length > 0) {
       task.verifiers.forEach(v => assignedResources.push(`${getUserDisplayName(v)} (Verifier)`));
+    }
+    if (task.deployers && task.deployers.length > 0) {
+      task.deployers.forEach(d => assignedResources.push(`${getUserDisplayName(d)} (Deployer)`));
     }
 
     return (
@@ -787,6 +842,114 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
           </button>
         </div>
 
+        {/* Visual Stepper */}
+        {(() => {
+          const STAGE_STEPS = [
+            { label: 'Request', statuses: ['DRAFT', 'PENDING_APPROVAL'] },
+            { label: 'Planning', statuses: ['ASSIGNED'] },
+            { label: 'Development', statuses: ['IN_DEVELOPMENT', 'RETURNED_TO_DEVELOPER', 'DELAYED'] },
+            { label: 'Testing', statuses: ['TESTING'] },
+            { label: 'Review', statuses: ['MANAGER_REVIEW'] },
+            { label: 'Deployment', statuses: ['DEPLOYMENT'] },
+            { label: 'Final Testing', statuses: ['FINAL_TESTING_OF_PATCH'] },
+            { label: 'Closure', statuses: ['COMPLETED', 'REJECTED', 'CANCELLED'] }
+          ];
+
+          const activeIdx = STAGE_STEPS.findIndex(s => s.statuses.includes(task.status));
+          
+          const getPrevCompleter = () => {
+            if (!task.statusHistory || task.statusHistory.length === 0) return null;
+            const last = [...task.statusHistory].reverse().find(h => h.newStatus === task.status && h.previousStatus !== task.status);
+            return last ? {
+              name: last.changedByName || last.changedByUsername || 'System',
+              role: last.changedByRole || 'User',
+              date: new Date(last.createdAt).toLocaleDateString()
+            } : null;
+          };
+
+          const prevCompleter = getPrevCompleter();
+
+          const getStageResponsible = (idx: number) => {
+            switch(idx) {
+              case 0: return task.client ? getUserDisplayName(task.client) : (task.author ? getUserDisplayName(task.author) : 'Client / Author');
+              case 1: return task.managers && task.managers.length > 0 ? task.managers.map(getUserDisplayName).join(', ') : 'Managers';
+              case 2: return task.developers && task.developers.length > 0 ? task.developers.map(getUserDisplayName).join(', ') : 'Developers';
+              case 3: return task.verifiers && task.verifiers.length > 0 ? task.verifiers.map(getUserDisplayName).join(', ') : 'Verifiers / QA';
+              case 4: return task.managers && task.managers.length > 0 ? task.managers.map(getUserDisplayName).join(', ') : 'Managers';
+              case 5: return task.deployer ? getUserDisplayName(task.deployer) : 'Assign Deployer';
+              case 6: return task.verifiers && task.verifiers.length > 0 ? task.verifiers.map(getUserDisplayName).join(', ') : 'Verifiers / QA';
+              default: return 'None';
+            }
+          };
+
+          return (
+            <div className="bg-gray-950/60 border-b border-gray-800 p-4 shrink-0 space-y-3">
+              <div className="flex items-center justify-between overflow-x-auto gap-4 py-2 scrollbar-none">
+                {STAGE_STEPS.map((step, idx) => {
+                  const isActive = idx === activeIdx;
+                  const isCompleted = idx < activeIdx || (task.status === 'COMPLETED' && idx === 7);
+                  const isDelayed = isActive && (task.status === 'DELAYED' || (task.plannedEndDate && new Date(task.plannedEndDate).getTime() < Date.now()));
+                  const isBlocked = isActive && task.status === 'ON_HOLD';
+
+                  let circleColor = 'border-gray-700 text-gray-500 bg-gray-900';
+                  let textColor = 'text-gray-500';
+                  if (isCompleted) {
+                    circleColor = 'border-emerald-500 text-emerald-400 bg-emerald-950/40';
+                    textColor = 'text-gray-300';
+                  } else if (isActive) {
+                    if (isDelayed) {
+                      circleColor = 'border-orange-500 text-orange-400 bg-orange-950/40 animate-pulse';
+                      textColor = 'text-orange-400 font-bold';
+                    } else if (isBlocked) {
+                      circleColor = 'border-yellow-500 text-yellow-400 bg-yellow-950/40 animate-pulse';
+                      textColor = 'text-yellow-400 font-bold';
+                    } else {
+                      circleColor = 'border-primary-500 text-primary-400 bg-primary-950/40 shadow shadow-primary-500/20';
+                      textColor = 'text-white font-bold';
+                    }
+                  }
+
+                  return (
+                    <div key={idx} className="flex items-center flex-1 last:flex-initial min-w-[90px] group">
+                      <div className="flex flex-col items-center gap-1.5 relative">
+                        <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-semibold ${circleColor} transition-all`}>
+                          {idx + 1}
+                        </div>
+                        <span className={`text-[10px] uppercase tracking-wider text-center truncate max-w-[100px] ${textColor}`}>
+                          {step.label}
+                        </span>
+                      </div>
+                      {idx < 7 && (
+                        <div className={`flex-1 h-0.5 mx-2 rounded ${isCompleted ? 'bg-emerald-600' : 'bg-gray-800'}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Ownership Sub-panel */}
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-gray-900/40 border border-gray-800 rounded-xl px-4 py-2 text-gray-400">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider">Current Stage Owner:</span>
+                  <span className="font-semibold text-gray-200">{activeIdx >= 0 ? getStageResponsible(activeIdx) : 'N/A'}</span>
+                </div>
+                {prevCompleter && (
+                  <div className="flex items-center gap-2 border-l border-gray-800 pl-3">
+                    <span className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider">Prev Stage Completed By:</span>
+                    <span className="text-gray-300 font-medium">{prevCompleter.name} ({prevCompleter.role}) on {prevCompleter.date}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 border-l border-gray-800 pl-3">
+                  <span className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider">Next Owner:</span>
+                  <span className="text-gray-400 font-medium">
+                    {activeIdx < 7 ? getStageResponsible(activeIdx + 1) : 'Closed'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 custom-scrollbar">
 
@@ -1014,6 +1177,14 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     setSelectedDevIds
                   )}
 
+                  {/* Testers */}
+                  {renderUserSelector(
+                    'Testers',
+                    usersList.filter((u) => u.role === 'TESTER'),
+                    selectedTesterIds,
+                    setSelectedTesterIds
+                  )}
+
                   {/* Verifiers */}
                   {renderUserSelector(
                     'Verifiers',
@@ -1127,11 +1298,66 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                   )}
 
                   {renderUserSelector(
+                    'Testers',
+                    usersList.filter(u => u.role === 'TESTER'),
+                    selectedTesterIds,
+                    setSelectedTesterIds
+                  )}
+
+                  {renderUserSelector(
                     'Verifiers',
                     usersList.filter(u => u.role === 'VERIFIER'),
                     selectedVerIds,
                     setSelectedVerIds
                   )}
+
+                  {renderUserSelector(
+                    'Deployers',
+                    usersList.filter(u => u.role === 'DEPLOYER'),
+                    selectedDeployerIds,
+                    setSelectedDeployerIds
+                  )}
+
+                  <div className="space-y-2">
+                    <span className="text-xs font-medium text-gray-400">Deployer</span>
+                    <select
+                      value={editDeployerId}
+                      onChange={(e) => setEditDeployerId(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors"
+                    >
+                      <option value="">Select Deployer</option>
+                      {usersList.filter(u => u.role === 'DEPLOYER').map((u) => {
+                        const id = u.id || u.userId || '';
+                        return (
+                          <option key={id} value={id}>
+                            {getUserDisplayName(u)}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-xs font-medium text-gray-400">Deployment Target</span>
+                    <input
+                      type="text"
+                      value={editDeploymentTarget}
+                      onChange={(e) => setEditDeploymentTarget(e.target.value)}
+                      placeholder="e.g. Production Server, UAT Environment"
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <span className="text-xs font-medium text-gray-400">Rollback Plan</span>
+                    <textarea
+                      value={editRollbackPlan}
+                      onChange={(e) => setEditRollbackPlan(e.target.value)}
+                      placeholder="Describe how to revert if the deployment fails"
+                      rows={3}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors resize-none"
+                    />
+                  </div>
 
                   <div className="space-y-2">
                     <span className="text-xs font-medium text-gray-400">Client Assignment (Optional)</span>
@@ -1222,6 +1448,18 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     )}
                   </div>
                   <div>
+                    <span className="text-gray-500 block mb-1">Testers:</span>
+                    {task.testers && task.testers.length > 0 ? (
+                      <ul className="list-disc pl-4 space-y-0.5 text-xs text-gray-300">
+                        {task.testers.map((t, i) => (
+                          <li key={i}>{getUserDisplayName(t)}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="text-xs text-gray-600 italic">None assigned</span>
+                    )}
+                  </div>
+                  <div>
                     <span className="text-gray-500 block mb-1">Verifiers:</span>
                     {task.verifiers && task.verifiers.length > 0 ? (
                       <ul className="list-disc pl-4 space-y-0.5 text-xs text-gray-300">
@@ -1233,6 +1471,38 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                       <span className="text-xs text-gray-600 italic">None assigned</span>
                     )}
                   </div>
+                  <div>
+                    <span className="text-gray-500 block mb-1">Deployers:</span>
+                    {task.deployers && task.deployers.length > 0 ? (
+                      <ul className="list-disc pl-4 space-y-0.5 text-xs text-gray-300">
+                        {task.deployers.map((d, i) => (
+                          <li key={i}>{getUserDisplayName(d)}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <span className="text-xs text-gray-600 italic">None assigned</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-gray-500 block mb-1">Deployer:</span>
+                    {task.deployer ? (
+                      <span className="font-medium text-gray-200">{getUserDisplayName(task.deployer)}</span>
+                    ) : (
+                      <span className="text-xs text-gray-600 italic">None assigned</span>
+                    )}
+                  </div>
+                  {task.deploymentTarget && (
+                    <div>
+                      <span className="text-gray-500 block mb-1">Deployment Target:</span>
+                      <span className="font-medium text-gray-200 text-xs">{task.deploymentTarget}</span>
+                    </div>
+                  )}
+                  {task.rollbackPlan && (
+                    <div>
+                      <span className="text-gray-500 block mb-1">Rollback Plan:</span>
+                      <p className="font-medium text-gray-200 text-xs whitespace-pre-wrap">{task.rollbackPlan}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

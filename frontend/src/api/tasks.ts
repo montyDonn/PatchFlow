@@ -67,7 +67,9 @@ export interface Task {
   manager?: TaskUser;
   managers?: TaskUser[];
   developers?: TaskUser[];
+  testers?: TaskUser[];
   verifiers?: TaskUser[];
+  deployers?: TaskUser[];
   assignee?: TaskUser;
   approver?: TaskUser;
   deployer?: TaskUser;
@@ -76,6 +78,8 @@ export interface Task {
   module?: Module;
   isInternal?: boolean;
   statusHistory?: StatusHistoryEntry[];
+  rollbackPlan?: string;
+  deploymentTarget?: string;
   auditLogs?: any[];
   comments?: TaskComment[];
   attachments?: any[];
@@ -100,7 +104,9 @@ export const createTask = async (data: {
   clientRequestId?: number;
   managerIds?: string[];
   developerIds?: string[];
+  testerIds?: string[];
   verifierIds?: string[];
+  deployerIds?: string[];
   dateGiven?: string;
   assigneeId?: string;
   approverId?: string;
@@ -149,11 +155,16 @@ export const updateTaskDetails = async (id: string, data: {
   clientRequestId?: number;
   managerIds?: string[];
   developerIds?: string[];
+  testerIds?: string[];
   verifierIds?: string[];
+  deployerIds?: string[];
+  deployerId?: string;
   moduleId?: string;
   dateGiven?: string;
   dateStarted?: string;
   dateEnded?: string;
+  rollbackPlan?: string;
+  deploymentTarget?: string;
   status?: string;
   reason?: string;
 }): Promise<Task> => {

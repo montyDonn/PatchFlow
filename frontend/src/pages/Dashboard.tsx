@@ -15,11 +15,12 @@ interface DashboardTask {
   title: string;
   description: string;
   status: string;
+  authorId?: string;
   module?: { name: string };
   assignee?: { name?: string; firstName?: string; lastName?: string; username?: string };
   createdAt: string;
   plannedEndDate?: string;
-  client?: { name?: string; firstName?: string; lastName?: string; username?: string };
+  client?: { id?: string; userId?: string; name?: string; firstName?: string; lastName?: string; username?: string };
   manager?: { name?: string; firstName?: string; lastName?: string; username?: string };
   managers?: Array<{ name?: string; firstName?: string; lastName?: string; username?: string }>;
   developers?: Array<{ name?: string; firstName?: string; lastName?: string; username?: string }>;
@@ -100,8 +101,8 @@ const STAGES: {
       chartColor: '#a78bfa',
     },
     {
-      status: 'VERIFYING',
-      label: 'Verifying',
+      status: 'TESTING',
+      label: 'Testing',
       icon: <Search size={18} />,
       gradient: 'from-indigo-500 to-indigo-600',
       ring: 'ring-indigo-400/40',
@@ -110,6 +111,42 @@ const STAGES: {
       border: 'border-indigo-500/30',
       glow: 'shadow-indigo-500/20',
       chartColor: '#818cf8',
+    },
+    {
+      status: 'MANAGER_REVIEW',
+      label: 'Manager Review',
+      icon: <Layers size={18} />,
+      gradient: 'from-orange-500 to-orange-600',
+      ring: 'ring-orange-400/40',
+      bg: 'bg-orange-500/10',
+      text: 'text-orange-400',
+      border: 'border-orange-500/30',
+      glow: 'shadow-orange-500/20',
+      chartColor: '#fb923c',
+    },
+    {
+      status: 'DEPLOYMENT',
+      label: 'Deployment',
+      icon: <ShieldCheck size={18} />,
+      gradient: 'from-blue-500 to-blue-600',
+      ring: 'ring-blue-400/40',
+      bg: 'bg-blue-500/10',
+      text: 'text-blue-400',
+      border: 'border-blue-500/30',
+      glow: 'shadow-blue-500/20',
+      chartColor: '#60a5fa',
+    },
+    {
+      status: 'FINAL_TESTING_OF_PATCH',
+      label: 'Final Testing',
+      icon: <Search size={18} />,
+      gradient: 'from-purple-500 to-purple-600',
+      ring: 'ring-purple-400/40',
+      bg: 'bg-purple-500/10',
+      text: 'text-purple-400',
+      border: 'border-purple-500/30',
+      glow: 'shadow-purple-500/20',
+      chartColor: '#c084fc',
     },
     {
       status: 'COMPLETED',
@@ -388,6 +425,61 @@ const Dashboard = () => {
       .slice(0, 6);
   }, [tasks]);
 
+  const roleStats = useMemo(() => {
+    const role = currentUser?.role;
+    const userId = currentUser?.id || (currentUser as any)?.userId;
+
+    if (role === 'CLIENT') {
+      const submitted = tasks.filter(t => t.client?.id === userId || t.client?.userId === userId || t.authorId === userId);
+      const pendingApproval = submitted.filter(t => t.status === 'PENDING_APPROVAL');
+      const deployed = submitted.filter(t => ['DEPLOYMENT', 'FINAL_TESTING_OF_PATCH', 'COMPLETED'].includes(t.status));
+      return [
+        { label: 'Submitted Requests', count: submitted.length, bg: 'bg-blue-500/10', text: 'text-blue-400' },
+        { label: 'Pending Approvals', count: pendingApproval.length, bg: 'bg-amber-500/10', text: 'text-amber-400' },
+        { label: 'Deployed Changes', count: deployed.length, bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
+      ];
+    }
+
+    if (role === 'DEVELOPER') {
+      const assigned = tasks.filter(t => ['ASSIGNED', 'IN_DEVELOPMENT'].includes(t.status));
+      const returns = tasks.filter(t => t.status === 'RETURNED_TO_DEVELOPER');
+      const blocked = tasks.filter(t => t.status === 'ON_HOLD');
+      const overdueOrUrgent = tasks.filter(t => t.plannedEndDate && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(t.status) && new Date(t.plannedEndDate).getTime() < Date.now() + 48*3600*1000);
+      return [
+        { label: 'Assigned Work', count: assigned.length, bg: 'bg-blue-500/10', text: 'text-blue-400' },
+        { label: 'Testing Returns', count: returns.length, bg: 'bg-rose-500/10', text: 'text-rose-400' },
+        { label: 'Blocked Work', count: blocked.length, bg: 'bg-yellow-500/10', text: 'text-yellow-400' },
+        { label: 'Upcoming Deadlines', count: overdueOrUrgent.length, bg: 'bg-orange-500/10', text: 'text-orange-400' },
+      ];
+    }
+
+    if (role === 'VERIFIER') {
+      const pendingVerify = tasks.filter(t => ['TESTING', 'FINAL_TESTING_OF_PATCH'].includes(t.status));
+      const failedVerify = tasks.filter(t => t.status === 'RETURNED_TO_DEVELOPER');
+      const overdue = tasks.filter(t => t.status === 'TESTING' && t.plannedEndDate && new Date(t.plannedEndDate).getTime() < Date.now());
+      return [
+        { label: 'Pending Verification', count: pendingVerify.length, bg: 'bg-purple-500/10', text: 'text-purple-400' },
+        { label: 'Failed Verification', count: failedVerify.length, bg: 'bg-rose-500/10', text: 'text-rose-400' },
+        { label: 'Overdue Testing', count: overdue.length, bg: 'bg-orange-500/10', text: 'text-orange-400' },
+      ];
+    }
+
+    if (role === 'MANAGER') {
+      const approvals = tasks.filter(t => ['PENDING_APPROVAL', 'MANAGER_REVIEW'].includes(t.status));
+      const overdue = tasks.filter(t => !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(t.status) && t.plannedEndDate && new Date(t.plannedEndDate).getTime() < Date.now());
+      const queue = tasks.filter(t => t.status === 'DEPLOYMENT');
+      const bottlenecks = tasks.filter(t => ['ON_HOLD', 'DELAYED', 'RETURNED_TO_DEVELOPER'].includes(t.status));
+      return [
+        { label: 'Pending Approvals', count: approvals.length, bg: 'bg-amber-500/10', text: 'text-amber-400' },
+        { label: 'Overdue Work', count: overdue.length, bg: 'bg-rose-500/10', text: 'text-rose-400' },
+        { label: 'Deployment Queue', count: queue.length, bg: 'bg-blue-500/10', text: 'text-blue-400' },
+        { label: 'Bottlenecks / Paused', count: bottlenecks.length, bg: 'bg-orange-500/10', text: 'text-orange-400' },
+      ];
+    }
+
+    return null;
+  }, [tasks, currentUser]);
+
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase().trim();
@@ -533,6 +625,21 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* ── Role-Based Statistics Cards ───────────── */}
+      {roleStats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-slide-up">
+          {roleStats.map((stat, i) => (
+            <div key={i} className="glass-card p-5 flex items-center justify-between border border-gray-700/40 bg-gray-800/20 hover:border-gray-600/50 hover:bg-gray-800/30 transition-all rounded-2xl shadow-sm">
+              <div className="space-y-1">
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{stat.label}</span>
+                <div className="text-3xl font-bold text-white mt-1">{stat.count}</div>
+              </div>
+              <span className={`w-3.5 h-3.5 rounded-full ${stat.bg} ${stat.text} border border-current opacity-70`} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Overview Row: Donut + Stage Cards ───────────── */}
       <div className="flex flex-col lg:flex-row gap-6">

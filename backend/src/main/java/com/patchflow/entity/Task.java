@@ -99,6 +99,12 @@ public class Task {
     @Column(name = "dateEnded")
     private Instant dateEnded;
 
+    @Column(name = "rollback_plan", columnDefinition = "TEXT")
+    private String rollbackPlan;
+
+    @Column(name = "deployment_target", length = 255)
+    private String deploymentTarget;
+
     // ── Singular relations ───────────────────────────────────────────────────
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -152,6 +158,18 @@ public class Task {
     @org.hibernate.annotations.SQLJoinTableRestriction("is_active = 1")
     @Builder.Default
     private List<User> verifiers = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(name = "change_req_TaskTesters", joinColumns = @JoinColumn(name = "A"), inverseJoinColumns = @JoinColumn(name = "B"))
+    @org.hibernate.annotations.SQLJoinTableRestriction("is_active = 1")
+    @Builder.Default
+    private List<User> testers = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(name = "change_req_TaskDeployers", joinColumns = @JoinColumn(name = "A"), inverseJoinColumns = @JoinColumn(name = "B"))
+    @org.hibernate.annotations.SQLJoinTableRestriction("is_active = 1")
+    @Builder.Default
+    private List<User> deployers = new ArrayList<>();
 
     // ── Collections ──────────────────────────────────────────────────────────
 

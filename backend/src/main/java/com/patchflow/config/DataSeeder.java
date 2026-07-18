@@ -94,6 +94,8 @@ public class DataSeeder implements CommandLineRunner {
             jdbcTemplate.execute("DELETE FROM change_req_TaskManagers");
             jdbcTemplate.execute("DELETE FROM change_req_TaskDevelopers");
             jdbcTemplate.execute("DELETE FROM change_req_TaskVerifiers");
+            jdbcTemplate.execute("DELETE FROM change_req_TaskTesters");
+            jdbcTemplate.execute("DELETE FROM change_req_TaskDeployers");
             jdbcTemplate.execute("DELETE FROM change_req_Task");
 
         } catch (Exception e) {
@@ -161,6 +163,10 @@ public class DataSeeder implements CommandLineRunner {
         seedUser("jagdish",        "JAGDISH",        "VERIFIER", "QA Engineer", "upcl@123");
         seedUser("verifier",       "verifier",       "VERIFIER", "QA Engineer", "upcl@123");
         seedUser("verifier1",      "Verifier 1",     "VERIFIER", "QA Engineer", "upcl@123");
+
+        // ── Testers & Deployers ───────────────────────────────────────────────
+        seedUser("tester1",        "Tester 1",       "TESTER",   "Tester",      "upcl@123");
+        seedUser("deployer1",      "Deployer 1",     "DEPLOYER", "Deployer",    "upcl@123");
  
         // ── Legacy demo accounts ──────────────────────────────────────────────
         seedUser("superadmin1",  "Super Admin 1",  "SUPER_ADMIN",       "Administrator",         "upcl@123");

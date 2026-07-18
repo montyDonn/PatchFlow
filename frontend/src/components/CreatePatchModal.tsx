@@ -81,7 +81,9 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
   const [moduleId, setModuleId]           = useState('');
   const [selectedManagerIds, setSelectedManagerIds] = useState<string[]>([]);
   const [selectedDeveloperIds, setSelectedDeveloperIds] = useState<string[]>([]);
+  const [selectedTesterIds, setSelectedTesterIds] = useState<string[]>([]);
   const [selectedVerifierIds, setSelectedVerifierIds] = useState<string[]>([]);
+  const [selectedDeployerIds, setSelectedDeployerIds] = useState<string[]>([]);
   const [dateGiven, setDateGiven]         = useState(new Date().toISOString().split('T')[0]);
   const [plannedStartDate, setPlannedStartDate] = useState('');
   const [plannedEndDate, setPlannedEndDate]     = useState('');
@@ -111,7 +113,9 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
 
   const managerUsers   = users.filter((u) => u.role === 'MANAGER' || u.role === 'SUPER_ADMIN');
   const developerUsers = users.filter((u) => u.role === 'DEVELOPER');
+  const testerUsers    = users.filter((u) => u.role === 'TESTER');
   const verifierUsers  = users.filter((u) => u.role === 'VERIFIER');
+  const deployerUsers  = users.filter((u) => u.role === 'DEPLOYER');
   const clientUsers    = users.filter((u) => u.role === 'CLIENT');
 
   /** Serialize 3-part description into a single string */
@@ -173,7 +177,9 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
         clientRequestId: 0,
         managerIds: selectedManagerIds,
         developerIds: selectedDeveloperIds,
+        testerIds: selectedTesterIds,
         verifierIds: selectedVerifierIds,
+        deployerIds: selectedDeployerIds,
         dateGiven: dateGiven ? new Date(dateGiven).toISOString() : undefined,
         lifecycleStatus: 0,
         plannedStartDate: plannedStartDate || undefined,
@@ -203,7 +209,9 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
       setModuleId('');
       setSelectedManagerIds([]);
       setSelectedDeveloperIds([]);
+      setSelectedTesterIds([]);
       setSelectedVerifierIds([]);
+      setSelectedDeployerIds([]);
       setDateGiven(new Date().toISOString().split('T')[0]);
       setPlannedStartDate('');
       setPlannedEndDate('');
@@ -390,10 +398,12 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
           {/* Resource Assignments */}
           <div className="border-t border-gray-850 pt-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-primary-400 mb-3">Resource Assignments</h3>
-            <div className={`grid gap-4 ${isClient ? 'grid-cols-1' : 'grid-cols-3'}`}>
+            <div className={`grid gap-4 ${isClient ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'}`}>
               {renderUserSelector('Managers *', managerUsers, selectedManagerIds, setSelectedManagerIds)}
               {!isClient && renderUserSelector('Developers', developerUsers, selectedDeveloperIds, setSelectedDeveloperIds)}
+              {!isClient && renderUserSelector('Testers', testerUsers, selectedTesterIds, setSelectedTesterIds)}
               {!isClient && renderUserSelector('Verifiers', verifierUsers, selectedVerifierIds, setSelectedVerifierIds)}
+              {!isClient && renderUserSelector('Deployers', deployerUsers, selectedDeployerIds, setSelectedDeployerIds)}
             </div>
           </div>
 

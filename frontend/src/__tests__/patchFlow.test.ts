@@ -79,41 +79,93 @@ describe('End-to-End Patch Flow Lifecycle', () => {
         return res.data;
       };
 
-      // 5. Move across stages
+      // 5. Move across stages – approved v2 workflow:
+      // Draft → Pending Approval → Assigned → In Development → Testing
+      //   → Manager Review → Deployment → Final Testing of Patch → Completed
+      // Return paths exercised: Testing→InDev, ManagerReview→InDev, FinalTesting→InDev
       let currentStatus = task.status;
 
-      // If the task was created as DRAFT, move to ASSIGNED.
       if (currentStatus === 'DRAFT') {
-        const updated = await updateTaskStatus(task.id, 'ASSIGNED');
-        currentStatus = updated.status;
-      }
-
-      // Move to PENDING_APPROVAL
-      if (currentStatus === 'ASSIGNED') {
         const updated = await updateTaskStatus(task.id, 'PENDING_APPROVAL');
         currentStatus = updated.status;
       }
 
-      // Move to IN_DEVELOPMENT
       if (currentStatus === 'PENDING_APPROVAL') {
+        const updated = await updateTaskStatus(task.id, 'ASSIGNED');
+        currentStatus = updated.status;
+      }
+
+      if (currentStatus === 'ASSIGNED') {
         const updated = await updateTaskStatus(task.id, 'IN_DEVELOPMENT');
         currentStatus = updated.status;
       }
 
-      // Move to VERIFYING
+      // Move to TESTING
       if (currentStatus === 'IN_DEVELOPMENT') {
-        const updated = await updateTaskStatus(task.id, 'VERIFYING');
+        const updated = await updateTaskStatus(task.id, 'TESTING');
         currentStatus = updated.status;
       }
 
+      // Test return path: TESTING → IN_DEVELOPMENT
+      if (currentStatus === 'TESTING') {
+        console.log('[E2E] Testing return path: TESTING → IN_DEVELOPMENT');
+        const returned = await updateTaskStatus(task.id, 'IN_DEVELOPMENT');
+        currentStatus = returned.status;
+        expect(currentStatus).toBe('IN_DEVELOPMENT');
+        // Move back to TESTING
+        const reTested = await updateTaskStatus(task.id, 'TESTING');
+        currentStatus = reTested.status;
+      }
+
+      // Move to MANAGER_REVIEW
+      if (currentStatus === 'TESTING') {
+        const updated = await updateTaskStatus(task.id, 'MANAGER_REVIEW');
+        currentStatus = updated.status;
+      }
+
+      // Test return path: MANAGER_REVIEW → IN_DEVELOPMENT
+      if (currentStatus === 'MANAGER_REVIEW') {
+        console.log('[E2E] Testing return path: MANAGER_REVIEW → IN_DEVELOPMENT');
+        const returned = await updateTaskStatus(task.id, 'IN_DEVELOPMENT');
+        currentStatus = returned.status;
+        expect(currentStatus).toBe('IN_DEVELOPMENT');
+        // Move back up through flow
+        const t1 = await updateTaskStatus(task.id, 'TESTING');        currentStatus = t1.status;
+        const t2 = await updateTaskStatus(task.id, 'MANAGER_REVIEW'); currentStatus = t2.status;
+      }
+
+      // Move to DEPLOYMENT
+      if (currentStatus === 'MANAGER_REVIEW') {
+        const updated = await updateTaskStatus(task.id, 'DEPLOYMENT');
+        currentStatus = updated.status;
+      }
+
+      // Move to FINAL_TESTING_OF_PATCH
+      if (currentStatus === 'DEPLOYMENT') {
+        const updated = await updateTaskStatus(task.id, 'FINAL_TESTING_OF_PATCH');
+        currentStatus = updated.status;
+      }
+
+      // Test return path: FINAL_TESTING_OF_PATCH → IN_DEVELOPMENT
+      if (currentStatus === 'FINAL_TESTING_OF_PATCH') {
+        console.log('[E2E] Testing return path: FINAL_TESTING_OF_PATCH → IN_DEVELOPMENT');
+        const returned = await updateTaskStatus(task.id, 'IN_DEVELOPMENT');
+        currentStatus = returned.status;
+        expect(currentStatus).toBe('IN_DEVELOPMENT');
+        const t1 = await updateTaskStatus(task.id, 'TESTING');                currentStatus = t1.status;
+        const t2 = await updateTaskStatus(task.id, 'MANAGER_REVIEW');         currentStatus = t2.status;
+        const t3 = await updateTaskStatus(task.id, 'DEPLOYMENT');             currentStatus = t3.status;
+        const t4 = await updateTaskStatus(task.id, 'FINAL_TESTING_OF_PATCH'); currentStatus = t4.status;
+      }
+
       // Move to COMPLETED
-      if (currentStatus === 'VERIFYING') {
+      if (currentStatus === 'FINAL_TESTING_OF_PATCH') {
         const updated = await updateTaskStatus(task.id, 'COMPLETED');
         currentStatus = updated.status;
       }
 
       expect(currentStatus).toBe('COMPLETED');
-      console.log('[E2E] Patch flow completed successfully across all stages!');
+      console.log('[E2E] Patch flow completed successfully across all stages (including return paths)!');
     } catch (err: any) {
       const responseData = err.response?.data;
       const responseStatus = err.response?.status;

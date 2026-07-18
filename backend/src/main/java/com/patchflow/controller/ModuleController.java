@@ -74,15 +74,16 @@ public class ModuleController {
                     Map.<String, Object>of("id", m.getModuleId() + "-" + u.getUserId(),
                             "user", Map.of("id", u.getUserId(), "username", u.getUsername(), "name", u.getName(), "role", u.getRole()))
             ).collect(Collectors.toList());
-            List<Map<String, Object>> managers   = assignments.stream().filter(a -> List.of("MANAGER","ADMIN").contains(((Map<?,?>)a.get("user")).get("role"))).collect(Collectors.toList());
+            List<Map<String, Object>> managers   = assignments.stream().filter(a -> List.of("MANAGER","SUPER_ADMIN").contains(((Map<?,?>)a.get("user")).get("role"))).collect(Collectors.toList());
             List<Map<String, Object>> resources  = assignments.stream().filter(a -> "DEVELOPER".equals(((Map<?,?>)a.get("user")).get("role"))).collect(Collectors.toList());
-            List<Map<String, Object>> deployers  = resources;
+            List<Map<String, Object>> testers    = assignments.stream().filter(a -> "TESTER".equals(((Map<?,?>)a.get("user")).get("role"))).collect(Collectors.toList());
+            List<Map<String, Object>> deployers  = assignments.stream().filter(a -> "DEPLOYER".equals(((Map<?,?>)a.get("user")).get("role"))).collect(Collectors.toList());
             List<Map<String, Object>> verifiers  = assignments.stream().filter(a -> "VERIFIER".equals(((Map<?,?>)a.get("user")).get("role"))).collect(Collectors.toList());
             Map<String, Object> h = new LinkedHashMap<>();
             h.put("id", m.getModuleId()); h.put("name", m.getModuleName());
             h.put("description", m.getDescription() != null ? m.getDescription() : ""); h.put("isActive", m.isActive());
-            h.put("counts", Map.of("managers", managers.size(), "resources", resources.size(), "deployers", deployers.size(), "verifiers", verifiers.size(), "totalAssignments", assignments.size()));
-            h.put("managers", managers); h.put("resources", resources); h.put("deployers", deployers); h.put("verifiers", verifiers);
+            h.put("counts", Map.of("managers", managers.size(), "resources", resources.size(), "testers", testers.size(), "deployers", deployers.size(), "verifiers", verifiers.size(), "totalAssignments", assignments.size()));
+            h.put("managers", managers); h.put("resources", resources); h.put("testers", testers); h.put("deployers", deployers); h.put("verifiers", verifiers);
             return h;
         }).collect(Collectors.toList());
         return ResponseEntity.ok(result);

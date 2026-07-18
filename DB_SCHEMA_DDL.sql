@@ -110,6 +110,8 @@ CREATE TABLE IF NOT EXISTS change_req_Task (
     dateStarted      TIMESTAMP    NULL DEFAULT NULL,
     dateEnded        TIMESTAMP    NULL DEFAULT NULL,
     completedAt      TIMESTAMP    NULL DEFAULT NULL,
+    rollback_plan    TEXT         NULL,
+    deployment_target VARCHAR(255) NULL,
     createdAt        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updatedAt        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT pk_task PRIMARY KEY (id),
@@ -268,3 +270,28 @@ CREATE TABLE IF NOT EXISTS change_req_UserModules (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_usermodules_B ON change_req_UserModules(B);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PatchFlow v2 – Workflow Extension Migration
+-- Run once against an existing database (idempotent with IF NOT EXISTS guards).
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- 1. Add new columns to change_req_Task (nullable, no back-fill needed)
+ALTER TABLE change_req_Task
+    ADD COLUMN IF NOT EXISTS rollback_plan     TEXT         NULL,
+    ADD COLUMN IF NOT EXISTS deployment_target VARCHAR(255) NULL;
+
+-- 2. Rename VERIFYING → TESTING in status column and StatusHistory
+UPDATE change_req_Task        SET status          = 'TESTING'               WHERE status          = 'VERIFYING';
+UPDATE change_req_StatusHistory SET previousStatus = 'TESTING'               WHERE previousStatus  = 'VERIFYING';
+UPDATE change_req_StatusHistory SET newStatus      = 'TESTING'               WHERE newStatus       = 'VERIFYING';
+
+-- 3. Rename PRODUCTION_VALIDATION → FINAL_TESTING_OF_PATCH
+UPDATE change_req_Task        SET status          = 'FINAL_TESTING_OF_PATCH' WHERE status          = 'PRODUCTION_VALIDATION';
+UPDATE change_req_StatusHistory SET previousStatus = 'FINAL_TESTING_OF_PATCH' WHERE previousStatus  = 'PRODUCTION_VALIDATION';
+UPDATE change_req_StatusHistory SET newStatus      = 'FINAL_TESTING_OF_PATCH' WHERE newStatus       = 'PRODUCTION_VALIDATION';
+
+-- 4. Merge READY_FOR_DEPLOYMENT and DEPLOYED → DEPLOYMENT
+UPDATE change_req_Task        SET status          = 'DEPLOYMENT'             WHERE status          IN ('READY_FOR_DEPLOYMENT','DEPLOYED');
+UPDATE change_req_StatusHistory SET previousStatus = 'DEPLOYMENT'             WHERE previousStatus  IN ('READY_FOR_DEPLOYMENT','DEPLOYED');
+UPDATE change_req_StatusHistory SET newStatus      = 'DEPLOYMENT'             WHERE newStatus       IN ('READY_FOR_DEPLOYMENT','DEPLOYED');

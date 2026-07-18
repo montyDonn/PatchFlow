@@ -40,15 +40,20 @@ public class TaskService {
 
     private static final Map<String, List<String>> ALLOWED_TRANSITIONS = new HashMap<>();
     static {
-        ALLOWED_TRANSITIONS.put("DRAFT", List.of("PENDING_APPROVAL"));
-        ALLOWED_TRANSITIONS.put("PENDING_APPROVAL", List.of("ASSIGNED"));
+        ALLOWED_TRANSITIONS.put("DRAFT", List.of("PENDING_APPROVAL", "CANCELLED"));
+        ALLOWED_TRANSITIONS.put("PENDING_APPROVAL", List.of("ASSIGNED", "REJECTED", "CANCELLED"));
         ALLOWED_TRANSITIONS.put("ASSIGNED", List.of("IN_DEVELOPMENT"));
-        ALLOWED_TRANSITIONS.put("IN_DEVELOPMENT", List.of("VERIFYING"));
-        ALLOWED_TRANSITIONS.put("VERIFYING",
-                List.of("COMPLETED", "RETURNED_TO_DEVELOPER", "REJECTED", "ON_HOLD", "CANCELLED"));
+        ALLOWED_TRANSITIONS.put("IN_DEVELOPMENT", List.of("TESTING"));
+        ALLOWED_TRANSITIONS.put("TESTING",
+                List.of("MANAGER_REVIEW", "IN_DEVELOPMENT", "COMPLETED", "REJECTED", "ON_HOLD", "CANCELLED"));
+        ALLOWED_TRANSITIONS.put("MANAGER_REVIEW",
+                List.of("DEPLOYMENT", "IN_DEVELOPMENT", "REJECTED", "ON_HOLD", "CANCELLED"));
+        ALLOWED_TRANSITIONS.put("DEPLOYMENT", List.of("FINAL_TESTING_OF_PATCH", "ON_HOLD", "CANCELLED"));
+        ALLOWED_TRANSITIONS.put("FINAL_TESTING_OF_PATCH", List.of("COMPLETED", "IN_DEVELOPMENT"));
+        // Legacy / exception statuses
         ALLOWED_TRANSITIONS.put("RETURNED_TO_DEVELOPER", List.of("IN_DEVELOPMENT"));
         ALLOWED_TRANSITIONS.put("DELAYED", List.of("IN_DEVELOPMENT"));
-        ALLOWED_TRANSITIONS.put("ON_HOLD", List.of("IN_DEVELOPMENT"));
+        ALLOWED_TRANSITIONS.put("ON_HOLD", List.of("IN_DEVELOPMENT", "ASSIGNED"));
         ALLOWED_TRANSITIONS.put("COMPLETED", List.of());
         ALLOWED_TRANSITIONS.put("REJECTED", List.of());
         ALLOWED_TRANSITIONS.put("CANCELLED", List.of());
@@ -166,24 +171,51 @@ public class TaskService {
                     List<String> devIds = task.getDevelopers().stream().map(User::getUserId).toList();
                     List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
                     authorized = isTaskManager && !devIds.isEmpty() && !verIds.isEmpty();
-                } else if (List.of("RETURNED_TO_DEVELOPER", "DELAYED", "ON_HOLD").contains(previousStatus)) {
+                } else if (List.of("TESTING", "MANAGER_REVIEW", "FINAL_TESTING_OF_PATCH",
+                                   "RETURNED_TO_DEVELOPER", "DELAYED", "ON_HOLD").contains(previousStatus)) {
                     List<String> devIds = task.getDevelopers().stream().map(User::getUserId).toList();
                     boolean isDev = "DEVELOPER".equals(actor.getRole()) && devIds.contains(actorId);
                     boolean isMgr = "MANAGER".equals(actor.getRole()) && isTaskManager;
                     authorized = isDev || isMgr;
                 }
             }
-            case "VERIFYING" -> {
+            case "TESTING" -> {
                 List<String> devIds = task.getDevelopers().stream().map(User::getUserId).toList();
                 authorized = "DEVELOPER".equals(actor.getRole()) && devIds.contains(actorId)
                         && "IN_DEVELOPMENT".equals(previousStatus);
             }
+            case "MANAGER_REVIEW" -> {
+                List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
+                authorized = "VERIFIER".equals(actor.getRole()) && verIds.contains(actorId)
+                        && "TESTING".equals(previousStatus);
+            }
+            case "DEPLOYMENT" -> {
+                authorized = "MANAGER".equals(actor.getRole()) && isTaskManager
+                        && "MANAGER_REVIEW".equals(previousStatus);
+            }
+            case "FINAL_TESTING_OF_PATCH" -> {
+                boolean isDeployer = actorId.equals(task.getDeployerId());
+                List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
+                boolean isVerifier = verIds.contains(actorId);
+                authorized = (isDeployer || isVerifier || isTaskManager)
+                        && "DEPLOYMENT".equals(previousStatus);
+            }
+            case "COMPLETED" -> {
+                List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
+                boolean isVerifier = verIds.contains(actorId);
+                boolean isClientOrAuthor = actorId.equals(task.getClientId()) || actorId.equals(task.getAuthorId());
+                authorized = (isVerifier || isTaskManager || isClientOrAuthor)
+                        && ("FINAL_TESTING_OF_PATCH".equals(previousStatus) || "TESTING".equals(previousStatus));
+            }
             default -> {
-                if (List.of("COMPLETED", "RETURNED_TO_DEVELOPER", "REJECTED", "ON_HOLD", "CANCELLED")
+                if (List.of("IN_DEVELOPMENT", "REJECTED", "ON_HOLD", "CANCELLED")
                         .contains(newStatus)) {
                     List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
-                    authorized = "VERIFIER".equals(actor.getRole()) && verIds.contains(actorId)
-                            && "VERIFYING".equals(previousStatus);
+                    boolean isVerifier = verIds.contains(actorId);
+                    boolean isMgr = isTaskManager || "MANAGER".equals(actor.getRole());
+                    authorized = (isVerifier && "TESTING".equals(previousStatus))
+                            || (isMgr && "MANAGER_REVIEW".equals(previousStatus))
+                            || ("FINAL_TESTING_OF_PATCH".equals(previousStatus) && (isVerifier || isMgr));
                 }
             }
         }
@@ -220,6 +252,7 @@ public class TaskService {
         m.put("authorId", task.getAuthorId());
         m.put("lifecycleStatus", task.getLifecycleStatus());
         m.put("clientId", task.getClientId());
+        m.put("deployerId", task.getDeployerId());
         m.put("teamId", task.getTeamId());
         m.put("moduleId", task.getModuleId());
         m.put("createdAt", task.getCreatedAt());
@@ -230,11 +263,16 @@ public class TaskService {
         m.put("dateGiven", task.getDateGiven());
         m.put("dateStarted", task.getDateStarted());
         m.put("dateEnded", task.getDateEnded());
+        m.put("rollbackPlan", task.getRollbackPlan());
+        m.put("deploymentTarget", task.getDeploymentTarget());
         m.put("author", normalizeUser(task.getAuthor()));
         m.put("client", normalizeUser(task.getClient()));
+        m.put("deployer", normalizeUser(task.getDeployer()));
         m.put("managers", task.getManagers().stream().map(this::normalizeUser).collect(Collectors.toList()));
         m.put("developers", task.getDevelopers().stream().map(this::normalizeUser).collect(Collectors.toList()));
         m.put("verifiers", task.getVerifiers().stream().map(this::normalizeUser).collect(Collectors.toList()));
+        m.put("testers", task.getTesters().stream().map(this::normalizeUser).collect(Collectors.toList()));
+        m.put("deployers", task.getDeployers().stream().map(this::normalizeUser).collect(Collectors.toList()));
         // backwards-compat aliases
         m.put("manager", task.getManagers().isEmpty() ? null : normalizeUser(task.getManagers().get(0)));
         m.put("assignee", task.getDevelopers().isEmpty() ? null : normalizeUser(task.getDevelopers().get(0)));
@@ -306,13 +344,15 @@ public class TaskService {
     public Map<String, Object> createTask(String authorId, String title, String description,
             String moduleId, String teamId, String clientId, Integer clientRequestId,
             List<String> managerIds, List<String> developerIds, List<String> verifierIds,
+            List<String> testerIds, List<String> deployerIds,
+            String deployerId,
             String dateGiven, Integer lifecycleStatus, String plannedStartDate, String plannedEndDate,
             Boolean isInternal) {
 
         User actor = getActor(authorId);
-        if (!isAdmin(actor.getRole()) && !Set.of("CLIENT", "MANAGER", "DEVELOPER").contains(actor.getRole())) {
+        if (!isAdmin(actor.getRole()) && !Set.of("CLIENT", "MANAGER", "DEVELOPER", "TESTER", "DEPLOYER").contains(actor.getRole())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Only ADMIN, CLIENT, MANAGER, and DEVELOPER can create patches");
+                    "Only ADMIN, CLIENT, MANAGER, DEVELOPER, TESTER, and DEPLOYER can create patches");
         }
         if ("CLIENT".equals(actor.getRole())) {
             if (plannedEndDate != null && !plannedEndDate.isBlank()) {
@@ -321,7 +361,8 @@ public class TaskService {
             if (plannedStartDate != null && !plannedStartDate.isBlank()) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Clients cannot set start dates");
             }
-            if ((developerIds != null && !developerIds.isEmpty()) || (verifierIds != null && !verifierIds.isEmpty())) {
+            if ((developerIds != null && !developerIds.isEmpty()) || (verifierIds != null && !verifierIds.isEmpty()) ||
+                    (testerIds != null && !testerIds.isEmpty()) || (deployerIds != null && !deployerIds.isEmpty())) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "Clients can only assign managers, not other resources");
             }
@@ -340,8 +381,12 @@ public class TaskService {
 
         List<String> finalDevIds = developerIds != null ? developerIds : List.of();
         List<String> finalVerIds = verifierIds != null ? verifierIds : List.of();
+        List<String> finalTesterIds = testerIds != null ? testerIds : List.of();
+        List<String> finalDeployerIds = deployerIds != null ? deployerIds : List.of();
         finalDevIds.forEach(id -> assertActiveUser(id, "developerId"));
         finalVerIds.forEach(id -> assertActiveUser(id, "verifierId"));
+        finalTesterIds.forEach(id -> assertActiveUser(id, "testerId"));
+        finalDeployerIds.forEach(id -> assertActiveUser(id, "deployerId"));
 
         String initialStatus = (!finalManagerIds.isEmpty() && !finalDevIds.isEmpty() && !finalVerIds.isEmpty())
                 ? "ASSIGNED"
@@ -350,6 +395,12 @@ public class TaskService {
         List<User> managers = userRepository.findAllById(finalManagerIds);
         List<User> developers = userRepository.findAllById(finalDevIds);
         List<User> verifiers = userRepository.findAllById(finalVerIds);
+        List<User> testersUsers = userRepository.findAllById(finalTesterIds);
+        List<User> deployersUsers = userRepository.findAllById(finalDeployerIds);
+
+        if (deployerId != null && !deployerId.trim().isEmpty()) {
+            assertActiveUser(deployerId, "deployerId");
+        }
 
         String generatedId = generateTaskId();
         String finalDescription = description;
@@ -368,6 +419,9 @@ public class TaskService {
                 .managers(new ArrayList<>(managers))
                 .developers(new ArrayList<>(developers))
                 .verifiers(new ArrayList<>(verifiers))
+                .testers(new ArrayList<>(testersUsers))
+                .deployers(new ArrayList<>(deployersUsers))
+                .deployerId(deployerId != null && !deployerId.trim().isEmpty() ? deployerId : null)
                 .dateGiven(parseInstant(dateGiven, Instant.now()))
                 .plannedStartDate(parseInstant(plannedStartDate, null))
                 .plannedEndDate(parseInstant(plannedEndDate, null))
@@ -381,6 +435,8 @@ public class TaskService {
         finalManagerIds.forEach(id -> taskRepository.upsertManager(taskId, id));
         finalDevIds.forEach(id -> taskRepository.upsertDeveloper(taskId, id));
         finalVerIds.forEach(id -> taskRepository.upsertVerifier(taskId, id));
+        finalTesterIds.forEach(id -> taskRepository.upsertTester(taskId, id));
+        finalDeployerIds.forEach(id -> taskRepository.upsertDeployerToList(taskId, id));
 
         statusHistoryRepository.save(StatusHistory.builder()
                 .taskId(task.getId()).previousStatus("DRAFT").newStatus(initialStatus)
@@ -403,6 +459,10 @@ public class TaskService {
                 "You have been assigned as Developer for patch: \"" + finalTask.getTitle() + "\""));
         task.getVerifiers().forEach(v -> triggerNotifications(v, "TASK_ASSIGNED",
                 "You have been assigned as Verifier for patch: \"" + finalTask.getTitle() + "\""));
+        task.getTesters().forEach(t -> triggerNotifications(t, "TASK_ASSIGNED",
+                "You have been assigned as Tester for patch: \"" + finalTask.getTitle() + "\""));
+        task.getDeployers().forEach(d -> triggerNotifications(d, "TASK_ASSIGNED",
+                "You have been assigned as Deployer for patch: \"" + finalTask.getTitle() + "\""));
 
         return getTaskById(task.getId());
     }
@@ -453,6 +513,12 @@ public class TaskService {
         if ("VERIFIER".equals(role)) {
             return task.getVerifiers().stream().anyMatch(v -> v.getUserId().equals(userId));
         }
+        if ("TESTER".equals(role)) {
+            return task.getTesters().stream().anyMatch(t -> t.getUserId().equals(userId));
+        }
+        if ("DEPLOYER".equals(role)) {
+            return task.getDeployers().stream().anyMatch(d -> d.getUserId().equals(userId));
+        }
         return false;
     }
 
@@ -465,6 +531,8 @@ public class TaskService {
         taskRepository.findByIdWithManagers(id); // loads managers
         taskRepository.findByIdWithDevelopers(id); // loads developers
         taskRepository.findByIdWithVerifiers(id); // loads verifiers
+        taskRepository.findByIdWithTesters(id); // loads testers
+        taskRepository.findByIdWithDeployers(id); // loads deployers
         Task task = taskRepository.findById(id).orElse(null); // final fetch (comments/statusHistory/auditLogs lazy-load
                                                               // per task = fine for 1 entity)
         if (task == null)
@@ -514,6 +582,16 @@ public class TaskService {
             case "CLIENT" -> actorId.equals(clientId) || actorId.equals(authorId);
             case "DEVELOPER" -> developers.stream().anyMatch(d -> actorId.equals(d.get("userId")));
             case "VERIFIER" -> verifiers.stream().anyMatch(v -> actorId.equals(v.get("userId")));
+            case "TESTER" -> {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> testers = (List<Map<String, Object>>) task.get("testers");
+                yield testers != null && testers.stream().anyMatch(t -> actorId.equals(t.get("userId")));
+            }
+            case "DEPLOYER" -> {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> deployers = (List<Map<String, Object>>) task.get("deployers");
+                yield deployers != null && deployers.stream().anyMatch(d -> actorId.equals(d.get("userId")));
+            }
             default -> false;
         };
         if (!ok)
@@ -594,8 +672,27 @@ public class TaskService {
                 }
                 case "IN_DEVELOPMENT" -> task.getDevelopers().forEach(d -> triggerNotifications(d,
                         "TASK_IN_DEVELOPMENT", "Work has started on your task: \"" + task.getTitle() + "\"."));
-                case "VERIFYING" -> task.getVerifiers().forEach(v -> triggerNotifications(v,
-                        "TASK_PENDING_VERIFICATION", "Task \"" + task.getTitle() + "\" is ready for verification."));
+                case "TESTING" -> task.getVerifiers().forEach(v -> triggerNotifications(v,
+                        "TASK_PENDING_VERIFICATION", "Task \"" + task.getTitle() + "\" is ready for testing."));
+                case "MANAGER_REVIEW" -> {
+                    String msg = "Testing is complete for patch \"" + task.getTitle() + "\". Pending manager review.";
+                    task.getManagers().forEach(m -> triggerNotifications(m, "TASK_MANAGER_REVIEW", msg));
+                }
+                case "DEPLOYMENT" -> {
+                    String msg = "Patch \"" + task.getTitle() + "\" has been approved and is ready for deployment.";
+                    if (task.getDeployerId() != null) {
+                        userRepository.findById(task.getDeployerId()).ifPresent(dep -> triggerNotifications(dep, "TASK_DEPLOYMENT", msg));
+                    } else {
+                        task.getManagers().forEach(m -> triggerNotifications(m, "TASK_DEPLOYMENT", msg));
+                    }
+                }
+                case "FINAL_TESTING_OF_PATCH" -> {
+                    String msg = "Patch \"" + task.getTitle() + "\" has been deployed. Final testing pending.";
+                    task.getVerifiers().forEach(v -> triggerNotifications(v, "TASK_FINAL_TESTING", msg));
+                    if (task.getClient() != null) {
+                        triggerNotifications(task.getClient(), "TASK_FINAL_TESTING", msg);
+                    }
+                }
                 case "RETURNED_TO_DEVELOPER" ->
                     task.getDevelopers().forEach(d -> triggerNotifications(d, "TASK_RETURNED", "Task \""
                             + task.getTitle() + "\" failed verification and has been returned to you for rework."));
@@ -604,6 +701,8 @@ public class TaskService {
                     task.getManagers().forEach(m -> triggerNotifications(m, "TASK_COMPLETED", msg));
                     task.getDevelopers().forEach(d -> triggerNotifications(d, "TASK_COMPLETED", msg));
                     task.getVerifiers().forEach(v -> triggerNotifications(v, "TASK_COMPLETED", msg));
+                    task.getTesters().forEach(t -> triggerNotifications(t, "TASK_COMPLETED", msg));
+                    task.getDeployers().forEach(d -> triggerNotifications(d, "TASK_COMPLETED", msg));
                     if (task.getClient() != null) {
                         triggerNotifications(task.getClient(), "TASK_FINALIZED",
                                 "Your patch request \"" + task.getTitle() + "\" has been verified and completed.");
@@ -614,6 +713,8 @@ public class TaskService {
                     task.getManagers().forEach(m -> triggerNotifications(m, "TASK_DELAYED", msg));
                     task.getDevelopers().forEach(d -> triggerNotifications(d, "TASK_DELAYED", msg));
                     task.getVerifiers().forEach(v -> triggerNotifications(v, "TASK_DELAYED", msg));
+                    task.getTesters().forEach(t -> triggerNotifications(t, "TASK_DELAYED", msg));
+                    task.getDeployers().forEach(d -> triggerNotifications(d, "TASK_DELAYED", msg));
                     if (task.getClient() != null) {
                         triggerNotifications(task.getClient(), "TASK_DELAYED",
                                 "Your patch request \"" + task.getTitle() + "\" has been delayed.");
@@ -797,6 +898,8 @@ public class TaskService {
         Set<String> prevManagers = task.getManagers().stream().map(User::getUserId).collect(Collectors.toSet());
         Set<String> prevDevelopers = task.getDevelopers().stream().map(User::getUserId).collect(Collectors.toSet());
         Set<String> prevVerifiers = task.getVerifiers().stream().map(User::getUserId).collect(Collectors.toSet());
+        Set<String> prevTesters = task.getTesters().stream().map(User::getUserId).collect(Collectors.toSet());
+        Set<String> prevDeployers = task.getDeployers().stream().map(User::getUserId).collect(Collectors.toSet());
         String prevTitle = task.getTitle();
         String prevDescription = task.getDescription();
         String prevModuleId = task.getModuleId();
@@ -822,6 +925,19 @@ public class TaskService {
             task.setPlannedStartDate(parseInstant((String) data.get("plannedStartDate"), null));
         if (data.containsKey("plannedEndDate") && data.get("plannedEndDate") != null)
             task.setPlannedEndDate(parseInstant((String) data.get("plannedEndDate"), null));
+        if (data.containsKey("deployerId")) {
+            String depId = (String) data.get("deployerId");
+            if (depId != null && !depId.trim().isEmpty()) {
+                assertActiveUser(depId, "deployerId");
+                task.setDeployerId(depId);
+            } else {
+                task.setDeployerId(null);
+            }
+        }
+        if (data.containsKey("rollbackPlan"))
+            task.setRollbackPlan((String) data.get("rollbackPlan"));
+        if (data.containsKey("deploymentTarget"))
+            task.setDeploymentTarget((String) data.get("deploymentTarget"));
 
         String newStatus = (String) data.get("status");
         if (newStatus != null && !newStatus.equals(oldStatus)) {
@@ -880,6 +996,30 @@ public class TaskService {
             validIds.forEach(id -> taskRepository.upsertVerifier(taskId, id));
             assignmentChanged = true;
         }
+        if (data.containsKey("testerIds") || data.containsKey("testers")) {
+            @SuppressWarnings("unchecked")
+            List<String> ids = data.containsKey("testerIds") ? (List<String>) data.get("testerIds")
+                    : (List<String>) data.get("testers");
+            List<User> validUsers = userRepository.findAllById(ids);
+            List<String> validIds = validUsers.stream().map(User::getUserId)
+                    .collect(Collectors.toList());
+
+            taskRepository.deactivateTestersByTaskId(taskId);
+            validIds.forEach(id -> taskRepository.upsertTester(taskId, id));
+            assignmentChanged = true;
+        }
+        if (data.containsKey("deployerIds") || data.containsKey("deployers")) {
+            @SuppressWarnings("unchecked")
+            List<String> ids = data.containsKey("deployerIds") ? (List<String>) data.get("deployerIds")
+                    : (List<String>) data.get("deployers");
+            List<User> validUsers = userRepository.findAllById(ids);
+            List<String> validIds = validUsers.stream().map(User::getUserId)
+                    .collect(Collectors.toList());
+
+            taskRepository.deactivateDeployersByTaskId(taskId);
+            validIds.forEach(id -> taskRepository.upsertDeployerToList(taskId, id));
+            assignmentChanged = true;
+        }
 
         if (assignmentChanged) {
             entityManager.detach(task);
@@ -890,6 +1030,8 @@ public class TaskService {
         Set<String> newManagers = task.getManagers().stream().map(User::getUserId).collect(Collectors.toSet());
         Set<String> newDevelopers = task.getDevelopers().stream().map(User::getUserId).collect(Collectors.toSet());
         Set<String> newVerifiers = task.getVerifiers().stream().map(User::getUserId).collect(Collectors.toSet());
+        Set<String> newTesters = task.getTesters().stream().map(User::getUserId).collect(Collectors.toSet());
+        Set<String> newDeployers = task.getDeployers().stream().map(User::getUserId).collect(Collectors.toSet());
 
         // 1. Notify newly assigned resources
         final Task finalTask1 = task;
@@ -899,6 +1041,10 @@ public class TaskService {
                 newDevelopers.stream().filter(id -> !prevDevelopers.contains(id)).collect(Collectors.toList()));
         List<User> addedVerifiers = userRepository.findAllById(
                 newVerifiers.stream().filter(id -> !prevVerifiers.contains(id)).collect(Collectors.toList()));
+        List<User> addedTesters = userRepository.findAllById(
+                newTesters.stream().filter(id -> !prevTesters.contains(id)).collect(Collectors.toList()));
+        List<User> addedDeployers = userRepository.findAllById(
+                newDeployers.stream().filter(id -> !prevDeployers.contains(id)).collect(Collectors.toList()));
 
         addedManagers.forEach(m -> triggerNotifications(m, "TASK_ASSIGNED",
                 "You have been assigned as Manager for patch: \"" + finalTask1.getTitle() + "\""));
@@ -906,6 +1052,10 @@ public class TaskService {
                 "You have been assigned as Developer for patch: \"" + finalTask1.getTitle() + "\""));
         addedVerifiers.forEach(v -> triggerNotifications(v, "TASK_ASSIGNED",
                 "You have been assigned as Verifier for patch: \"" + finalTask1.getTitle() + "\""));
+        addedTesters.forEach(t -> triggerNotifications(t, "TASK_ASSIGNED",
+                "You have been assigned as Tester for patch: \"" + finalTask1.getTitle() + "\""));
+        addedDeployers.forEach(d -> triggerNotifications(d, "TASK_ASSIGNED",
+                "You have been assigned as Deployer for patch: \"" + finalTask1.getTitle() + "\""));
 
         // 2. Notify on field changes (title, description, module)
         boolean fieldsChanged = false;
@@ -921,6 +1071,8 @@ public class TaskService {
             task.getManagers().forEach(m -> triggerNotifications(m, "TASK_UPDATED", updateMsg));
             task.getDevelopers().forEach(d -> triggerNotifications(d, "TASK_UPDATED", updateMsg));
             task.getVerifiers().forEach(v -> triggerNotifications(v, "TASK_UPDATED", updateMsg));
+            task.getTesters().forEach(t -> triggerNotifications(t, "TASK_UPDATED", updateMsg));
+            task.getDeployers().forEach(d -> triggerNotifications(d, "TASK_UPDATED", updateMsg));
             if (task.getClient() != null) {
                 triggerNotifications(task.getClient(), "TASK_UPDATED", updateMsg);
             }
@@ -936,6 +1088,8 @@ public class TaskService {
                 task.getManagers().forEach(m -> triggerNotifications(m, "DEADLINE_UPDATED", deadlineMsg));
                 task.getDevelopers().forEach(d -> triggerNotifications(d, "DEADLINE_UPDATED", deadlineMsg));
                 task.getVerifiers().forEach(v -> triggerNotifications(v, "DEADLINE_UPDATED", deadlineMsg));
+                task.getTesters().forEach(t -> triggerNotifications(t, "DEADLINE_UPDATED", deadlineMsg));
+                task.getDeployers().forEach(d -> triggerNotifications(d, "DEADLINE_UPDATED", deadlineMsg));
                 if (task.getClient() != null) {
                     triggerNotifications(task.getClient(), "DEADLINE_UPDATED", deadlineMsg);
                 }

@@ -68,10 +68,13 @@ interface Task {
 
 const STATUSES = [
   { value: 'DRAFT', label: 'Draft' },
-  { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
+  { value: 'ASSIGNED', label: 'Assigned' },
   { value: 'IN_DEVELOPMENT', label: 'In Development' },
-  { value: 'VERIFYING', label: 'Verifying' },
+  { value: 'TESTING', label: 'Testing' },
+  { value: 'MANAGER_REVIEW', label: 'Manager Review' },
+  { value: 'DEPLOYMENT', label: 'Deployment' },
+  { value: 'FINAL_TESTING_OF_PATCH', label: 'Final Testing of Patch' },
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'RETURNED_TO_DEVELOPER', label: 'Returned' },
   { value: 'REJECTED', label: 'Rejected' },
