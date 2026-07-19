@@ -65,13 +65,13 @@ const STATUSES = [
 
 const NEXT_STATUSES: Record<string, string[]> = {
   DRAFT: ['PENDING_APPROVAL', 'CANCELLED'],
-  PENDING_APPROVAL: ['ASSIGNED', 'REJECTED', 'CANCELLED'],
+  PENDING_APPROVAL: ['ASSIGNED', 'REJECTED'],
   ASSIGNED: ['IN_DEVELOPMENT'],
   IN_DEVELOPMENT: ['TESTING'],
-  TESTING: ['MANAGER_REVIEW', 'IN_DEVELOPMENT', 'COMPLETED', 'REJECTED', 'ON_HOLD', 'CANCELLED'],
-  MANAGER_REVIEW: ['DEPLOYMENT', 'IN_DEVELOPMENT', 'REJECTED', 'ON_HOLD', 'CANCELLED'],
-  DEPLOYMENT: ['FINAL_TESTING_OF_PATCH', 'ON_HOLD', 'CANCELLED'],
-  FINAL_TESTING_OF_PATCH: ['COMPLETED', 'IN_DEVELOPMENT'],
+  TESTING: ['IN_DEVELOPMENT', 'MANAGER_REVIEW', 'ON_HOLD'],
+  MANAGER_REVIEW: ['IN_DEVELOPMENT', 'DEPLOYMENT', 'REJECTED', 'ON_HOLD'],
+  DEPLOYMENT: ['IN_DEVELOPMENT', 'FINAL_TESTING_OF_PATCH', 'ON_HOLD'],
+  FINAL_TESTING_OF_PATCH: ['MANAGER_REVIEW', 'COMPLETED'],
   // Legacy statuses kept for backward compatibility
   RETURNED_TO_DEVELOPER: ['IN_DEVELOPMENT'],
   DELAYED: ['IN_DEVELOPMENT'],
@@ -141,7 +141,21 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     currentUser?.role === 'SUPER_ADMIN' ||
     (currentUser?.role === 'MANAGER' && isTaskManager);
 
-  const canEditResources = canAssignResources && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(task.status);
+  const isTaskDeveloper = task.developers?.some((d: any) => (d.id || d.userId) === currentUserId);
+  const isTaskTester = task.testers?.some((t: any) => (t.id || t.userId) === currentUserId);
+  const isTaskDeployer = task.deployers?.some((d: any) => (d.id || d.userId) === currentUserId) || currentUserId === task.deployerId;
+  const isVerifier = task.verifiers?.some((v: any) => (v.id || v.userId) === currentUserId);
+
+  const isStageOwner =
+    currentUser?.role === 'SUPER_ADMIN' ||
+    (currentUser?.role === 'CLIENT' && task.status === 'DRAFT') ||
+    (currentUser?.role === 'MANAGER' && isTaskManager && ['PENDING_APPROVAL', 'MANAGER_REVIEW', 'ON_HOLD'].includes(task.status)) ||
+    (currentUser?.role === 'DEVELOPER' && isTaskDeveloper && ['ASSIGNED', 'IN_DEVELOPMENT', 'RETURNED_TO_DEVELOPER', 'DELAYED', 'ON_HOLD'].includes(task.status)) ||
+    (currentUser?.role === 'TESTER' && isTaskTester && ['TESTING', 'FINAL_TESTING_OF_PATCH'].includes(task.status)) ||
+    (currentUser?.role === 'DEPLOYER' && isTaskDeployer && task.status === 'DEPLOYMENT') ||
+    (currentUser?.role === 'VERIFIER' && isVerifier && task.status === 'FINAL_TESTING_OF_PATCH');
+
+  const canEditResources = (canAssignResources || isStageOwner) && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(task.status);
   let nextStatuses = NEXT_STATUSES[task.status] || [];
 
   // When the patch is awaiting manager approval, ASSIGNED must NOT be reachable
@@ -150,32 +164,36 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
   if (task.status === 'PENDING_APPROVAL' && canAssignResources) {
     nextStatuses = nextStatuses.filter(s => s !== 'ASSIGNED');
   }
+
   if (currentUser?.role === 'SUPER_ADMIN') {
     // Admins see all transitions
   } else if (currentUser?.role === 'CLIENT') {
-    nextStatuses = task.status === 'DRAFT' ? ['PENDING_APPROVAL', 'CANCELLED'] :
-                   task.status === 'FINAL_TESTING_OF_PATCH' ? ['COMPLETED', 'IN_DEVELOPMENT'] : [];
+    nextStatuses = task.status === 'DRAFT' ? ['PENDING_APPROVAL', 'CANCELLED'] : [];
   } else if (currentUser?.role === 'MANAGER') {
     nextStatuses = isTaskManager ? nextStatuses.filter(status =>
-      (task.status === 'PENDING_APPROVAL' && status === 'ASSIGNED') ||
-      (task.status === 'ASSIGNED' && status === 'IN_DEVELOPMENT') ||
-      (task.status === 'MANAGER_REVIEW' && ['DEPLOYMENT', 'IN_DEVELOPMENT', 'REJECTED', 'ON_HOLD', 'CANCELLED'].includes(status)) ||
-      (task.status === 'DEPLOYMENT' && ['FINAL_TESTING_OF_PATCH', 'ON_HOLD', 'CANCELLED'].includes(status)) ||
-      (task.status === 'FINAL_TESTING_OF_PATCH' && ['COMPLETED', 'IN_DEVELOPMENT'].includes(status)) ||
-      (['TESTING', 'RETURNED_TO_DEVELOPER', 'DELAYED', 'ON_HOLD'].includes(task.status) && status === 'IN_DEVELOPMENT')
+      (task.status === 'PENDING_APPROVAL' && ['ASSIGNED', 'REJECTED'].includes(status)) ||
+      (task.status === 'MANAGER_REVIEW' && ['DEPLOYMENT', 'IN_DEVELOPMENT', 'REJECTED', 'ON_HOLD'].includes(status)) ||
+      (task.status === 'ON_HOLD' && status === 'ASSIGNED')
     ) : [];
   } else if (currentUser?.role === 'DEVELOPER') {
-    nextStatuses = nextStatuses.filter(status =>
+    nextStatuses = isTaskDeveloper ? nextStatuses.filter(status =>
+      (task.status === 'ASSIGNED' && status === 'IN_DEVELOPMENT') ||
       (task.status === 'IN_DEVELOPMENT' && status === 'TESTING') ||
-      (['TESTING', 'RETURNED_TO_DEVELOPER', 'DELAYED', 'ON_HOLD'].includes(task.status) && status === 'IN_DEVELOPMENT')
-    );
+      (['RETURNED_TO_DEVELOPER', 'DELAYED'].includes(task.status) && status === 'IN_DEVELOPMENT') ||
+      (task.status === 'ON_HOLD' && status === 'IN_DEVELOPMENT')
+    ) : [];
+  } else if (currentUser?.role === 'TESTER') {
+    nextStatuses = isTaskTester ? nextStatuses.filter(status =>
+      (task.status === 'TESTING' && ['IN_DEVELOPMENT', 'MANAGER_REVIEW', 'ON_HOLD'].includes(status)) ||
+      (task.status === 'FINAL_TESTING_OF_PATCH' && ['MANAGER_REVIEW', 'COMPLETED'].includes(status))
+    ) : [];
+  } else if (currentUser?.role === 'DEPLOYER') {
+    nextStatuses = isTaskDeployer ? nextStatuses.filter(status =>
+      (task.status === 'DEPLOYMENT' && ['IN_DEVELOPMENT', 'FINAL_TESTING_OF_PATCH', 'ON_HOLD'].includes(status))
+    ) : [];
   } else if (currentUser?.role === 'VERIFIER') {
-    const isVerifier = task.verifiers?.some((v: any) => (v.id || v.userId) === currentUserId);
-    const isDeployer = currentUserId === task.deployerId;
     nextStatuses = isVerifier ? nextStatuses.filter(status =>
-      (task.status === 'TESTING' && ['MANAGER_REVIEW', 'IN_DEVELOPMENT', 'COMPLETED', 'REJECTED', 'ON_HOLD', 'CANCELLED'].includes(status)) ||
-      (task.status === 'FINAL_TESTING_OF_PATCH' && ['COMPLETED', 'IN_DEVELOPMENT'].includes(status)) ||
-      (task.status === 'DEPLOYMENT' && status === 'FINAL_TESTING_OF_PATCH' && (isDeployer || isVerifier))
+      (task.status === 'FINAL_TESTING_OF_PATCH' && ['MANAGER_REVIEW', 'COMPLETED'].includes(status))
     ) : [];
   } else {
     nextStatuses = [];
@@ -845,40 +863,55 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
         {/* Visual Stepper */}
         {(() => {
           const STAGE_STEPS = [
-            { label: 'Request', statuses: ['DRAFT', 'PENDING_APPROVAL'] },
-            { label: 'Planning', statuses: ['ASSIGNED'] },
-            { label: 'Development', statuses: ['IN_DEVELOPMENT', 'RETURNED_TO_DEVELOPER', 'DELAYED'] },
-            { label: 'Testing', statuses: ['TESTING'] },
-            { label: 'Review', statuses: ['MANAGER_REVIEW'] },
-            { label: 'Deployment', statuses: ['DEPLOYMENT'] },
-            { label: 'Final Testing', statuses: ['FINAL_TESTING_OF_PATCH'] },
-            { label: 'Closure', statuses: ['COMPLETED', 'REJECTED', 'CANCELLED'] }
+            'DRAFT',
+            'PENDING_APPROVAL',
+            'ASSIGNED',
+            'IN_DEVELOPMENT',
+            'TESTING',
+            'MANAGER_REVIEW',
+            'DEPLOYMENT',
+            'FINAL_TESTING_OF_PATCH',
+            'COMPLETED'
           ];
 
-          const activeIdx = STAGE_STEPS.findIndex(s => s.statuses.includes(task.status));
-          
-          const getPrevCompleter = () => {
-            if (!task.statusHistory || task.statusHistory.length === 0) return null;
-            const last = [...task.statusHistory].reverse().find(h => h.newStatus === task.status && h.previousStatus !== task.status);
-            return last ? {
-              name: last.changedByName || last.changedByUsername || 'System',
-              role: last.changedByRole || 'User',
-              date: new Date(last.createdAt).toLocaleDateString()
-            } : null;
+          const getActiveIndex = (status: string) => {
+            if (status === 'RETURNED_TO_DEVELOPER' || status === 'DELAYED') return STAGE_STEPS.indexOf('IN_DEVELOPMENT');
+            if (status === 'REJECTED' || status === 'CANCELLED') return STAGE_STEPS.indexOf('COMPLETED');
+            if (status === 'ON_HOLD') {
+              const lastValid = [...(task.statusHistory || [])]
+                .reverse()
+                .find(h => h.newStatus && STAGE_STEPS.includes(h.newStatus) && h.newStatus !== 'ON_HOLD');
+              return lastValid ? STAGE_STEPS.indexOf(lastValid.newStatus) : STAGE_STEPS.indexOf('IN_DEVELOPMENT');
+            }
+            return STAGE_STEPS.indexOf(status);
           };
 
-          const prevCompleter = getPrevCompleter();
+          const activeIdx = getActiveIndex(task.status);
 
-          const getStageResponsible = (idx: number) => {
-            switch(idx) {
-              case 0: return task.client ? getUserDisplayName(task.client) : (task.author ? getUserDisplayName(task.author) : 'Client / Author');
-              case 1: return task.managers && task.managers.length > 0 ? task.managers.map(getUserDisplayName).join(', ') : 'Managers';
-              case 2: return task.developers && task.developers.length > 0 ? task.developers.map(getUserDisplayName).join(', ') : 'Developers';
-              case 3: return task.verifiers && task.verifiers.length > 0 ? task.verifiers.map(getUserDisplayName).join(', ') : 'Verifiers / QA';
-              case 4: return task.managers && task.managers.length > 0 ? task.managers.map(getUserDisplayName).join(', ') : 'Managers';
-              case 5: return task.deployer ? getUserDisplayName(task.deployer) : 'Assign Deployer';
-              case 6: return task.verifiers && task.verifiers.length > 0 ? task.verifiers.map(getUserDisplayName).join(', ') : 'Verifiers / QA';
-              default: return 'None';
+          const getStageOwner = (idx: number) => {
+            if (idx < 0 || idx >= STAGE_STEPS.length) return 'N/A';
+            const stage = STAGE_STEPS[idx];
+            switch (stage) {
+              case 'DRAFT':
+                return task.client ? getUserDisplayName(task.client) : (task.author ? getUserDisplayName(task.author) : 'Client / Author');
+              case 'PENDING_APPROVAL':
+                return task.managers && task.managers.length > 0 ? task.managers.map(getUserDisplayName).join(', ') : 'Managers';
+              case 'ASSIGNED':
+                return task.developers && task.developers.length > 0 ? task.developers.map(getUserDisplayName).join(', ') : 'Developers';
+              case 'IN_DEVELOPMENT':
+                return task.developers && task.developers.length > 0 ? task.developers.map(getUserDisplayName).join(', ') : 'Developers';
+              case 'TESTING':
+                return task.testers && task.testers.length > 0 ? task.testers.map(getUserDisplayName).join(', ') : 'Testers';
+              case 'MANAGER_REVIEW':
+                return task.managers && task.managers.length > 0 ? task.managers.map(getUserDisplayName).join(', ') : 'Managers';
+              case 'DEPLOYMENT':
+                return task.deployers && task.deployers.length > 0 ? task.deployers.map(getUserDisplayName).join(', ') : (task.deployer ? getUserDisplayName(task.deployer) : 'Deployers');
+              case 'FINAL_TESTING_OF_PATCH':
+                return task.verifiers && task.verifiers.length > 0 ? task.verifiers.map(getUserDisplayName).join(', ') : 'Verifiers';
+              case 'COMPLETED':
+                return 'Closed';
+              default:
+                return 'N/A';
             }
           };
 
@@ -887,7 +920,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
               <div className="flex items-center justify-between overflow-x-auto gap-4 py-2 scrollbar-none">
                 {STAGE_STEPS.map((step, idx) => {
                   const isActive = idx === activeIdx;
-                  const isCompleted = idx < activeIdx || (task.status === 'COMPLETED' && idx === 7);
+                  const isCompleted = idx < activeIdx || (task.status === 'COMPLETED' && idx === 8);
                   const isDelayed = isActive && (task.status === 'DELAYED' || (task.plannedEndDate && new Date(task.plannedEndDate).getTime() < Date.now()));
                   const isBlocked = isActive && task.status === 'ON_HOLD';
 
@@ -916,10 +949,10 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                           {idx + 1}
                         </div>
                         <span className={`text-[10px] uppercase tracking-wider text-center truncate max-w-[100px] ${textColor}`}>
-                          {step.label}
+                          {step.replace(/_/g, ' ')}
                         </span>
                       </div>
-                      {idx < 7 && (
+                      {idx < 8 && (
                         <div className={`flex-1 h-0.5 mx-2 rounded ${isCompleted ? 'bg-emerald-600' : 'bg-gray-800'}`} />
                       )}
                     </div>
@@ -928,21 +961,21 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
               </div>
 
               {/* Ownership Sub-panel */}
-              <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-gray-900/40 border border-gray-800 rounded-xl px-4 py-2 text-gray-400">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs bg-gray-900/40 border border-gray-800 rounded-xl px-4 py-2 text-gray-400 w-full">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider">Current Stage Owner:</span>
-                  <span className="font-semibold text-gray-200">{activeIdx >= 0 ? getStageResponsible(activeIdx) : 'N/A'}</span>
+                  <span className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider">Current Owner:</span>
+                  <span className="font-semibold text-gray-200">{activeIdx >= 0 ? getStageOwner(activeIdx) : 'N/A'}</span>
                 </div>
-                {prevCompleter && (
-                  <div className="flex items-center gap-2 border-l border-gray-800 pl-3">
-                    <span className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider">Prev Stage Completed By:</span>
-                    <span className="text-gray-300 font-medium">{prevCompleter.name} ({prevCompleter.role}) on {prevCompleter.date}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 border-l border-gray-800 pl-3">
-                  <span className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider">Next Owner:</span>
+                <div className="flex items-center gap-2 border-l border-gray-800/60 pl-3">
+                  <span className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider">Previous:</span>
+                  <span className="text-gray-300 font-medium">
+                    {activeIdx > 0 ? getStageOwner(activeIdx - 1) : 'N/A'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 border-l border-gray-800/60 pl-3">
+                  <span className="text-[10px] uppercase font-semibold text-gray-500 tracking-wider">Next:</span>
                   <span className="text-gray-400 font-medium">
-                    {activeIdx < 7 ? getStageResponsible(activeIdx + 1) : 'Closed'}
+                    {activeIdx < STAGE_STEPS.length - 1 ? getStageOwner(activeIdx + 1) : 'Closed'}
                   </span>
                 </div>
               </div>
@@ -1283,59 +1316,61 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     />
                   </div>
 
-                  {renderUserSelector(
+                  {canAssignResources && renderUserSelector(
                     'Managers *',
                     usersList.filter(u => u.role === 'MANAGER' || u.role === 'SUPER_ADMIN'),
                     selectedManagerIds,
                     setSelectedManagerIds
                   )}
 
-                  {renderUserSelector(
+                  {canAssignResources && renderUserSelector(
                     'Developers',
                     usersList.filter(u => u.role === 'DEVELOPER'),
                     selectedDevIds,
                     setSelectedDevIds
                   )}
 
-                  {renderUserSelector(
+                  {canAssignResources && renderUserSelector(
                     'Testers',
                     usersList.filter(u => u.role === 'TESTER'),
                     selectedTesterIds,
                     setSelectedTesterIds
                   )}
 
-                  {renderUserSelector(
+                  {canAssignResources && renderUserSelector(
                     'Verifiers',
                     usersList.filter(u => u.role === 'VERIFIER'),
                     selectedVerIds,
                     setSelectedVerIds
                   )}
 
-                  {renderUserSelector(
+                  {canAssignResources && renderUserSelector(
                     'Deployers',
                     usersList.filter(u => u.role === 'DEPLOYER'),
                     selectedDeployerIds,
                     setSelectedDeployerIds
                   )}
 
-                  <div className="space-y-2">
-                    <span className="text-xs font-medium text-gray-400">Deployer</span>
-                    <select
-                      value={editDeployerId}
-                      onChange={(e) => setEditDeployerId(e.target.value)}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors"
-                    >
-                      <option value="">Select Deployer</option>
-                      {usersList.filter(u => u.role === 'DEPLOYER').map((u) => {
-                        const id = u.id || u.userId || '';
-                        return (
-                          <option key={id} value={id}>
-                            {getUserDisplayName(u)}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
+                  {canAssignResources && (
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium text-gray-400">Deployer</span>
+                      <select
+                        value={editDeployerId}
+                        onChange={(e) => setEditDeployerId(e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors"
+                      >
+                        <option value="">Select Deployer</option>
+                        {usersList.filter(u => u.role === 'DEPLOYER').map((u) => {
+                          const id = u.id || u.userId || '';
+                          return (
+                            <option key={id} value={id}>
+                              {getUserDisplayName(u)}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <span className="text-xs font-medium text-gray-400">Deployment Target</span>
@@ -1359,30 +1394,32 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <span className="text-xs font-medium text-gray-400">Client Assignment (Optional)</span>
-                    <select
-                      value={editClientId}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setEditClientId(val);
-                        if (!val) {
-                          setEditClientRequestId('0');
-                        }
-                      }}
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors"
-                    >
-                      <option value="">No Client (Internal Request)</option>
-                      {usersList.filter(u => u.role === 'CLIENT').map((u) => {
-                        const id = u.id || u.userId || '';
-                        return (
-                          <option key={id} value={id}>
-                            {getUserDisplayName(u)}
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
+                  {canAssignResources && (
+                    <div className="space-y-2">
+                      <span className="text-xs font-medium text-gray-400">Client Assignment (Optional)</span>
+                      <select
+                        value={editClientId}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditClientId(val);
+                          if (!val) {
+                            setEditClientRequestId('0');
+                          }
+                        }}
+                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors"
+                      >
+                        <option value="">No Client (Internal Request)</option>
+                        {usersList.filter(u => u.role === 'CLIENT').map((u) => {
+                          const id = u.id || u.userId || '';
+                          return (
+                            <option key={id} value={id}>
+                              {getUserDisplayName(u)}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
 
 
                 </div>

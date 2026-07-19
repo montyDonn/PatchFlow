@@ -120,4 +120,28 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     @Query(value = "INSERT INTO change_req_TaskDeployers (A, B, is_active) VALUES (:taskId, :deployerId, true) " +
                    "ON DUPLICATE KEY UPDATE is_active = true", nativeQuery = true)
     void upsertDeployerToList(@Param("taskId") String taskId, @Param("deployerId") String deployerId);
+
+    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN FETCH t.developers WHERE t.lifecycleStatus < 100")
+    List<Task> findAllActiveWithDevelopers();
+
+    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN FETCH t.verifiers WHERE t.lifecycleStatus < 100")
+    List<Task> findAllActiveWithVerifiers();
+
+    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN FETCH t.testers WHERE t.lifecycleStatus < 100")
+    List<Task> findAllActiveWithTesters();
+
+    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN FETCH t.deployers WHERE t.lifecycleStatus < 100")
+    List<Task> findAllActiveWithDeployers();
+
+    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN FETCH t.developers")
+    List<Task> findAllWithDevelopers();
+
+    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN FETCH t.verifiers")
+    List<Task> findAllWithVerifiers();
+
+    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN FETCH t.testers")
+    List<Task> findAllWithTesters();
+
+    @Query("SELECT DISTINCT t FROM Task t LEFT JOIN FETCH t.deployers")
+    List<Task> findAllWithDeployers();
 }

@@ -234,11 +234,29 @@ function Topbar({ theme, onThemeToggle, onOpenMobileSidebar }: TopbarProps) {
           {showBellTooltip && (
             <div className="absolute right-0 top-12 w-72 sm:w-80 rounded-xl border border-gray-700 bg-gray-900 shadow-2xl p-4 z-50 text-left pointer-events-auto flex flex-col gap-3 max-h-96 overflow-y-auto custom-scrollbar">
               <div className="flex justify-between items-center pb-2 border-b border-gray-800">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Notifications</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Notifications</span>
+                  {unreadNotifications > 0 && (
+                    <span className="text-[10px] bg-danger-500/20 text-danger-400 font-bold px-2 py-0.5 rounded-full">
+                      {unreadNotifications} New
+                    </span>
+                  )}
+                </div>
                 {unreadNotifications > 0 && (
-                  <span className="text-[10px] bg-danger-500/20 text-danger-400 font-bold px-2 py-0.5 rounded-full">
-                    {unreadNotifications} New
-                  </span>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        await api.delete("/notifications/clear");
+                        setNotifications([]);
+                      } catch (err) {
+                        console.error("Failed to clear notifications", err);
+                      }
+                    }}
+                    className="text-[10px] font-semibold text-primary-400 hover:text-primary-300 transition-colors bg-primary-500/10 hover:bg-primary-500/20 border border-primary-500/20 px-2 py-0.5 rounded-md cursor-pointer select-none"
+                  >
+                    Clear All
+                  </button>
                 )}
               </div>
               <div className="space-y-2 flex-1 overflow-y-auto max-h-60 custom-scrollbar pr-0.5">

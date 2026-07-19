@@ -107,9 +107,11 @@ export function PatchCard({ task, onClick }: PatchCardProps) {
       <div className="flex items-center justify-between border-t border-gray-800 pt-3 mt-1">
         <div className="flex -space-x-2 overflow-hidden">
           {task.client && renderAvatar(task.client, 'Client', 'bg-gray-600')}
-          {renderAvatar(task.manager, 'Manager', 'bg-yellow-600')}
+          {task.manager && renderAvatar(task.manager, 'Manager', 'bg-yellow-600')}
           {task.developers && task.developers.map((d) => renderAvatar(d, `Developer`, 'bg-primary-600'))}
+          {task.testers && task.testers.map((t) => renderAvatar(t, `Tester`, 'bg-rose-600'))}
           {task.verifiers && task.verifiers.map((v) => renderAvatar(v, `Verifier`, 'bg-purple-600'))}
+          {task.deployers && task.deployers.map((d) => renderAvatar(d, `Deployer`, 'bg-emerald-600'))}
         </div>
         
         <div className="text-xs font-medium text-gray-400">

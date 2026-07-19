@@ -23,13 +23,16 @@ public class DeadlineReminderScheduler {
     private final NotificationService notificationService;
     private final NotificationRepository notificationRepository;
 
-    // Runs once every hour to check for overdue or approaching deadlines.
     @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void checkAndSendDeadlineReminders() {
         log.info("Running deadline reminder background check...");
         Instant now = Instant.now();
         Instant fortyEightHoursFromNow = now.plus(48, ChronoUnit.HOURS);
+
+        // Preload lazy collections to utilize first-level cache and avoid N+1 queries in loop
+        taskRepository.findAllActiveWithDevelopers();
+        taskRepository.findAllActiveWithVerifiers();
 
         // Fetch all active tasks
         List<Task> activeTasks = taskRepository.findAllActiveWithRelations();

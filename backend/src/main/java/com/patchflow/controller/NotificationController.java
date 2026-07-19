@@ -35,4 +35,11 @@ public class NotificationController {
             return ResponseEntity.status(ex.getStatusCode()).body(Map.of("error", ex.getReason()));
         }
     }
+
+    @DeleteMapping("/clear")
+    public ResponseEntity<?> clearAllNotifications(HttpServletRequest req) {
+        User user = Auth.require(req);
+        notificationService.clearAllNotifications(user.getUserId());
+        return ResponseEntity.ok(Map.of("message", "All notifications cleared"));
+    }
 }

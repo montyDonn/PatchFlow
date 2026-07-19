@@ -32,6 +32,19 @@ public class NotificationQueueScheduler {
 
         log.info("Found {} pending external notifications to process", pendingItems.size());
 
+        // Batch fetch users to prevent N+1 queries in the loop
+        List<String> userIds = pendingItems.stream()
+                .filter(item -> "SMS".equalsIgnoreCase(item.getChannel()))
+                .map(NotificationStack::getRecipientId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+
+        java.util.Map<String, User> userMap = new java.util.HashMap<>();
+        if (!userIds.isEmpty()) {
+            userRepository.findAllById(userIds).forEach(u -> userMap.put(u.getUserId(), u));
+        }
+
         for (NotificationStack item : pendingItems) {
             try {
                 log.debug("Processing notification ID: {}, Channel: {}, Recipient: {}", 
@@ -43,9 +56,8 @@ public class NotificationQueueScheduler {
                         emailSenderService.sendEmail(item.getRecipientInfo(), subject, item.getMessageText());
                     }
                     case "SMS" -> {
-                        String name = userRepository.findById(item.getRecipientId())
-                                .map(User::getName)
-                                .orElse("User");
+                        User user = userMap.get(item.getRecipientId());
+                        String name = user != null ? user.getName() : "User";
                         smsSenderService.sendSms(item.getRecipientInfo(), item.getMessageText(), name);
                     }
                     case "WHATSAPP" -> {

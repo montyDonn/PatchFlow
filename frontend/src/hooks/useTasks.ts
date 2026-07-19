@@ -133,9 +133,13 @@ export function useTasks() {
         ...(t.managers || []),
         ...(t.developers || []),
         ...(t.verifiers || []),
+        ...(t.testers || []),
+        ...(t.deployers || []),
         t.manager,
         t.assignee,
         t.client,
+        t.deployer,
+        t.verifier,
       ];
       candidates.forEach(u => {
         if (!u) return;

@@ -53,4 +53,10 @@ public class NotificationService {
         n.setRead(true);
         return notificationRepository.save(n);
     }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void clearAllNotifications(String userId) {
+        List<Notification> userNotifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        notificationRepository.deleteAll(userNotifications);
+    }
 }

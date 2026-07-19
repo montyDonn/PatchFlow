@@ -41,15 +41,13 @@ public class TaskService {
     private static final Map<String, List<String>> ALLOWED_TRANSITIONS = new HashMap<>();
     static {
         ALLOWED_TRANSITIONS.put("DRAFT", List.of("PENDING_APPROVAL", "CANCELLED"));
-        ALLOWED_TRANSITIONS.put("PENDING_APPROVAL", List.of("ASSIGNED", "REJECTED", "CANCELLED"));
+        ALLOWED_TRANSITIONS.put("PENDING_APPROVAL", List.of("ASSIGNED", "REJECTED"));
         ALLOWED_TRANSITIONS.put("ASSIGNED", List.of("IN_DEVELOPMENT"));
         ALLOWED_TRANSITIONS.put("IN_DEVELOPMENT", List.of("TESTING"));
-        ALLOWED_TRANSITIONS.put("TESTING",
-                List.of("MANAGER_REVIEW", "IN_DEVELOPMENT", "COMPLETED", "REJECTED", "ON_HOLD", "CANCELLED"));
-        ALLOWED_TRANSITIONS.put("MANAGER_REVIEW",
-                List.of("DEPLOYMENT", "IN_DEVELOPMENT", "REJECTED", "ON_HOLD", "CANCELLED"));
-        ALLOWED_TRANSITIONS.put("DEPLOYMENT", List.of("FINAL_TESTING_OF_PATCH", "ON_HOLD", "CANCELLED"));
-        ALLOWED_TRANSITIONS.put("FINAL_TESTING_OF_PATCH", List.of("COMPLETED", "IN_DEVELOPMENT"));
+        ALLOWED_TRANSITIONS.put("TESTING", List.of("IN_DEVELOPMENT", "MANAGER_REVIEW", "ON_HOLD"));
+        ALLOWED_TRANSITIONS.put("MANAGER_REVIEW", List.of("IN_DEVELOPMENT", "DEPLOYMENT", "REJECTED", "ON_HOLD"));
+        ALLOWED_TRANSITIONS.put("DEPLOYMENT", List.of("IN_DEVELOPMENT", "FINAL_TESTING_OF_PATCH", "ON_HOLD"));
+        ALLOWED_TRANSITIONS.put("FINAL_TESTING_OF_PATCH", List.of("MANAGER_REVIEW", "COMPLETED"));
         // Legacy / exception statuses
         ALLOWED_TRANSITIONS.put("RETURNED_TO_DEVELOPER", List.of("IN_DEVELOPMENT"));
         ALLOWED_TRANSITIONS.put("DELAYED", List.of("IN_DEVELOPMENT"));
@@ -153,69 +151,54 @@ public class TaskService {
         String actorId = actor.getUserId();
         List<String> managerIds = task.getManagers().stream().map(User::getUserId).collect(Collectors.toList());
         boolean isTaskManager = managerIds.contains(actorId);
+        List<String> testerIds = task.getTesters().stream().map(User::getUserId).collect(Collectors.toList());
+        boolean isTaskTester = testerIds.contains(actorId);
+        List<String> deployerIds = task.getDeployers().stream().map(User::getUserId).collect(Collectors.toList());
+        boolean isTaskDeployer = deployerIds.contains(actorId);
         boolean authorized = false;
 
-        switch (newStatus) {
+        List<String> devIds = task.getDevelopers().stream().map(User::getUserId).collect(Collectors.toList());
+        boolean isTaskDeveloper = devIds.contains(actorId);
+        List<String> verifierIds = task.getVerifiers().stream().map(User::getUserId).collect(Collectors.toList());
+        boolean isTaskVerifier = verifierIds.contains(actorId);
+
+        switch (previousStatus) {
+            case "DRAFT" -> {
+                // Owner: CLIENT
+                authorized = "CLIENT".equals(actor.getRole()) && 
+                        (actorId.equals(task.getClientId()) || actorId.equals(task.getAuthorId()));
+            }
             case "PENDING_APPROVAL" -> {
-                boolean clientOrAuthor = ("CLIENT".equals(actor.getRole()) &&
-                        (actorId.equals(task.getClientId()) || actorId.equals(task.getAuthorId()))) ||
-                        (task.getClientId() == null && (actorId.equals(task.getAuthorId()) || isTaskManager));
-                authorized = clientOrAuthor && "DRAFT".equals(previousStatus);
+                // Owner: MANAGER
+                authorized = "MANAGER".equals(actor.getRole()) && isTaskManager;
             }
-            case "ASSIGNED" -> {
-                authorized = "MANAGER".equals(actor.getRole()) && isTaskManager
-                        && "PENDING_APPROVAL".equals(previousStatus);
-            }
-            case "IN_DEVELOPMENT" -> {
-                if ("ASSIGNED".equals(previousStatus) && "MANAGER".equals(actor.getRole())) {
-                    List<String> devIds = task.getDevelopers().stream().map(User::getUserId).toList();
-                    List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
-                    authorized = isTaskManager && !devIds.isEmpty() && !verIds.isEmpty();
-                } else if (List.of("TESTING", "MANAGER_REVIEW", "FINAL_TESTING_OF_PATCH",
-                                   "RETURNED_TO_DEVELOPER", "DELAYED", "ON_HOLD").contains(previousStatus)) {
-                    List<String> devIds = task.getDevelopers().stream().map(User::getUserId).toList();
-                    boolean isDev = "DEVELOPER".equals(actor.getRole()) && devIds.contains(actorId);
-                    boolean isMgr = "MANAGER".equals(actor.getRole()) && isTaskManager;
-                    authorized = isDev || isMgr;
-                }
+            case "ASSIGNED", "IN_DEVELOPMENT", "RETURNED_TO_DEVELOPER", "DELAYED" -> {
+                // Owner: DEVELOPER
+                authorized = "DEVELOPER".equals(actor.getRole()) && isTaskDeveloper;
             }
             case "TESTING" -> {
-                List<String> devIds = task.getDevelopers().stream().map(User::getUserId).toList();
-                authorized = "DEVELOPER".equals(actor.getRole()) && devIds.contains(actorId)
-                        && "IN_DEVELOPMENT".equals(previousStatus);
+                // Owner: TESTER
+                authorized = "TESTER".equals(actor.getRole()) && isTaskTester;
             }
             case "MANAGER_REVIEW" -> {
-                List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
-                authorized = "VERIFIER".equals(actor.getRole()) && verIds.contains(actorId)
-                        && "TESTING".equals(previousStatus);
+                // Owner: MANAGER
+                authorized = "MANAGER".equals(actor.getRole()) && isTaskManager;
             }
             case "DEPLOYMENT" -> {
-                authorized = "MANAGER".equals(actor.getRole()) && isTaskManager
-                        && "MANAGER_REVIEW".equals(previousStatus);
+                // Owner: DEPLOYER
+                authorized = "DEPLOYER".equals(actor.getRole()) && (isTaskDeployer || actorId.equals(task.getDeployerId()));
             }
             case "FINAL_TESTING_OF_PATCH" -> {
-                boolean isDeployer = actorId.equals(task.getDeployerId());
-                List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
-                boolean isVerifier = verIds.contains(actorId);
-                authorized = (isDeployer || isVerifier || isTaskManager)
-                        && "DEPLOYMENT".equals(previousStatus);
+                // Owner: Assigned TESTER OR Assigned VERIFIER
+                authorized = ("TESTER".equals(actor.getRole()) && isTaskTester) || 
+                        ("VERIFIER".equals(actor.getRole()) && isTaskVerifier);
             }
-            case "COMPLETED" -> {
-                List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
-                boolean isVerifier = verIds.contains(actorId);
-                boolean isClientOrAuthor = actorId.equals(task.getClientId()) || actorId.equals(task.getAuthorId());
-                authorized = (isVerifier || isTaskManager || isClientOrAuthor)
-                        && ("FINAL_TESTING_OF_PATCH".equals(previousStatus) || "TESTING".equals(previousStatus));
-            }
-            default -> {
-                if (List.of("IN_DEVELOPMENT", "REJECTED", "ON_HOLD", "CANCELLED")
-                        .contains(newStatus)) {
-                    List<String> verIds = task.getVerifiers().stream().map(User::getUserId).toList();
-                    boolean isVerifier = verIds.contains(actorId);
-                    boolean isMgr = isTaskManager || "MANAGER".equals(actor.getRole());
-                    authorized = (isVerifier && "TESTING".equals(previousStatus))
-                            || (isMgr && "MANAGER_REVIEW".equals(previousStatus))
-                            || ("FINAL_TESTING_OF_PATCH".equals(previousStatus) && (isVerifier || isMgr));
+            case "ON_HOLD" -> {
+                // Moving off hold: developer can move to IN_DEVELOPMENT, manager can move to ASSIGNED
+                if ("IN_DEVELOPMENT".equals(newStatus)) {
+                    authorized = "DEVELOPER".equals(actor.getRole()) && isTaskDeveloper;
+                } else if ("ASSIGNED".equals(newStatus)) {
+                    authorized = "MANAGER".equals(actor.getRole()) && isTaskManager;
                 }
             }
         }
@@ -471,13 +454,19 @@ public class TaskService {
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getTasks(String role, String userId, String status, boolean includeDeleted) {
-        // Use JOIN FETCH query to load managers/developers/verifiers/module in ONE SQL
-        // instead of N+1 lazy loads (massive performance fix)
         List<Task> tasks;
         if (isAdmin(role) && includeDeleted) {
+            taskRepository.findAllWithDevelopers();
+            taskRepository.findAllWithVerifiers();
+            taskRepository.findAllWithTesters();
+            taskRepository.findAllWithDeployers();
             tasks = taskRepository.findAllWithRelations().stream()
                     .collect(Collectors.toList());
         } else {
+            taskRepository.findAllActiveWithDevelopers();
+            taskRepository.findAllActiveWithVerifiers();
+            taskRepository.findAllActiveWithTesters();
+            taskRepository.findAllActiveWithDeployers();
             tasks = taskRepository.findAllActiveWithRelations().stream()
                     .filter(t -> hasReadAccess(t, role, userId))
                     .collect(Collectors.toList());
@@ -636,7 +625,7 @@ public class TaskService {
                 .build());
 
         // Notifications
-        sendStatusNotifications(task, newStatus, actorId);
+        sendStatusNotifications(task, newStatus, previousStatus, actorId);
 
         return getTaskById(taskId);
     }
@@ -654,7 +643,7 @@ public class TaskService {
         }
     }
 
-    private void sendStatusNotifications(Task task, String newStatus, String actorId) {
+    private void sendStatusNotifications(Task task, String newStatus, String previousStatus, String actorId) {
         try {
             switch (newStatus) {
                 case "PENDING_APPROVAL" ->
@@ -720,11 +709,62 @@ public class TaskService {
                                 "Your patch request \"" + task.getTitle() + "\" has been delayed.");
                     }
                 }
+                case "ON_HOLD" -> {
+                    String msg = "Task \"" + task.getTitle() + "\" has been put on hold.";
+                    task.getManagers().forEach(m -> triggerNotifications(m, "TASK_ON_HOLD", msg));
+                    if (task.getClient() != null) {
+                        triggerNotifications(task.getClient(), "TASK_FINALIZED", "Your patch request \""
+                                + task.getTitle() + "\" status has been updated to ON_HOLD.");
+                    }
+                }
                 default -> {
-                    if (task.getClient() != null && List.of("REJECTED", "CANCELLED", "ON_HOLD").contains(newStatus)) {
+                    if (task.getClient() != null && List.of("REJECTED", "CANCELLED").contains(newStatus)) {
                         triggerNotifications(task.getClient(), "TASK_FINALIZED", "Your patch request \""
                                 + task.getTitle() + "\" status has been updated to " + newStatus + ".");
                     }
+                }
+            }
+
+            // Enhanced Manager Notifications when patch changes stage:
+            if (previousStatus != null && !previousStatus.equals(newStatus)) {
+                String managerMsg = null;
+
+                // 1. Developer -> Testing
+                if ("TESTING".equals(newStatus) && "IN_DEVELOPMENT".equals(previousStatus)) {
+                    managerMsg = "Patch \"" + task.getTitle() + "\" has completed development and entered Testing stage.";
+                }
+                // 2. Tester -> Manager Review
+                else if ("MANAGER_REVIEW".equals(newStatus) && "TESTING".equals(previousStatus)) {
+                    managerMsg = "Testing completed for patch \"" + task.getTitle() + "\". Pending your review.";
+                }
+                // 3. Manager -> Deployment
+                else if ("DEPLOYMENT".equals(newStatus) && "MANAGER_REVIEW".equals(previousStatus)) {
+                    managerMsg = "Patch \"" + task.getTitle() + "\" approved and transitioned to Deployment stage.";
+                }
+                // 4. Deployment Failed (Deployment -> In Development / On Hold)
+                else if (("IN_DEVELOPMENT".equals(newStatus) || "ON_HOLD".equals(newStatus)) && "DEPLOYMENT".equals(previousStatus)) {
+                    managerMsg = "Deployment failed for patch \"" + task.getTitle() + "\". Status updated to " + newStatus + ".";
+                }
+                // 5. Deployment Completed (Deployment -> Final Testing)
+                else if ("FINAL_TESTING_OF_PATCH".equals(newStatus) && "DEPLOYMENT".equals(previousStatus)) {
+                    managerMsg = "Deployment completed for patch \"" + task.getTitle() + "\". Transitioned to Final Testing.";
+                }
+                // 6. Final Testing Failed (Final Testing -> Manager Review)
+                else if ("MANAGER_REVIEW".equals(newStatus) && "FINAL_TESTING_OF_PATCH".equals(previousStatus)) {
+                    managerMsg = "Final testing failed for patch \"" + task.getTitle() + "\". Returned to Manager Review.";
+                }
+                // 7. Final Testing Completed (Final Testing -> Completed)
+                else if ("COMPLETED".equals(newStatus) && "FINAL_TESTING_OF_PATCH".equals(previousStatus)) {
+                    managerMsg = "Final testing completed. Patch \"" + task.getTitle() + "\" is successfully COMPLETED.";
+                }
+                // 8. Patch put On Hold
+                else if ("ON_HOLD".equals(newStatus)) {
+                    managerMsg = "Patch \"" + task.getTitle() + "\" has been put ON HOLD.";
+                }
+
+                if (managerMsg != null) {
+                    final String finalMsg = managerMsg;
+                    task.getManagers().forEach(m -> triggerNotifications(m, "TASK_STAGE_CHANGE", finalMsg));
                 }
             }
         } catch (Exception ignored) {
@@ -881,16 +921,41 @@ public class TaskService {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                             "Clients can only assign managers, not other resources");
                 }
-            } else if ("MANAGER".equals(role)) {
-                boolean isAssignedManager = task.getManagers().stream()
-                        .anyMatch(m -> m.getUserId().equals(actorId));
-                if (!isAssignedManager) {
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                            "Forbidden: You are not assigned to this patch");
-                }
             } else {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                        "Forbidden: Only admins and assigned managers can edit patch details");
+                List<String> managerIds = task.getManagers().stream().map(User::getUserId).collect(Collectors.toList());
+                boolean isTaskManager = managerIds.contains(actorId);
+                List<String> devIds = task.getDevelopers().stream().map(User::getUserId).collect(Collectors.toList());
+                boolean isTaskDeveloper = devIds.contains(actorId);
+                List<String> testerIds = task.getTesters().stream().map(User::getUserId).collect(Collectors.toList());
+                boolean isTaskTester = testerIds.contains(actorId);
+                List<String> deployerIds = task.getDeployers().stream().map(User::getUserId).collect(Collectors.toList());
+                boolean isTaskDeployer = deployerIds.contains(actorId);
+                List<String> verifierIds = task.getVerifiers().stream().map(User::getUserId).collect(Collectors.toList());
+                boolean isTaskVerifier = verifierIds.contains(actorId);
+
+                boolean isAuthorized = false;
+                String currentStatus = task.getStatus();
+
+                if ("DRAFT".equals(currentStatus)) {
+                    isAuthorized = actorId.equals(task.getClientId()) || actorId.equals(task.getAuthorId());
+                } else if (List.of("PENDING_APPROVAL", "MANAGER_REVIEW").contains(currentStatus)) {
+                    isAuthorized = "MANAGER".equals(role) && isTaskManager;
+                } else if (List.of("ASSIGNED", "IN_DEVELOPMENT", "RETURNED_TO_DEVELOPER", "DELAYED").contains(currentStatus)) {
+                    isAuthorized = "DEVELOPER".equals(role) && isTaskDeveloper;
+                } else if ("TESTING".equals(currentStatus)) {
+                    isAuthorized = "TESTER".equals(role) && isTaskTester;
+                } else if ("DEPLOYMENT".equals(currentStatus)) {
+                    isAuthorized = "DEPLOYER".equals(role) && (isTaskDeployer || actorId.equals(task.getDeployerId()));
+                } else if ("FINAL_TESTING_OF_PATCH".equals(currentStatus)) {
+                    isAuthorized = ("TESTER".equals(role) && isTaskTester) || ("VERIFIER".equals(role) && isTaskVerifier);
+                } else if ("ON_HOLD".equals(currentStatus)) {
+                    isAuthorized = ("DEVELOPER".equals(role) && isTaskDeveloper) || ("MANAGER".equals(role) && isTaskManager);
+                }
+
+                if (!isAuthorized) {
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                            "Forbidden: You are not authorized to edit this patch at the current stage");
+                }
             }
         }
 
@@ -1096,9 +1161,8 @@ public class TaskService {
             }
         }
 
-        // 4. Notify on status changes
         if (newStatus != null && !newStatus.equals(oldStatus)) {
-            sendStatusNotifications(task, newStatus, actorId);
+            sendStatusNotifications(task, newStatus, oldStatus, actorId);
         }
 
         return getTaskById(taskId);
