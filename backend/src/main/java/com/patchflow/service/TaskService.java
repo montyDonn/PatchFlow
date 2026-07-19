@@ -51,7 +51,7 @@ public class TaskService {
         // Legacy / exception statuses
         ALLOWED_TRANSITIONS.put("RETURNED_TO_DEVELOPER", List.of("IN_DEVELOPMENT"));
         ALLOWED_TRANSITIONS.put("DELAYED", List.of("IN_DEVELOPMENT"));
-        ALLOWED_TRANSITIONS.put("ON_HOLD", List.of("IN_DEVELOPMENT", "ASSIGNED"));
+        ALLOWED_TRANSITIONS.put("ON_HOLD", List.of("IN_DEVELOPMENT", "ASSIGNED", "TESTING", "MANAGER_REVIEW", "DEPLOYMENT"));
         ALLOWED_TRANSITIONS.put("COMPLETED", List.of());
         ALLOWED_TRANSITIONS.put("REJECTED", List.of());
         ALLOWED_TRANSITIONS.put("CANCELLED", List.of());
@@ -194,11 +194,25 @@ public class TaskService {
                         ("VERIFIER".equals(actor.getRole()) && isTaskVerifier);
             }
             case "ON_HOLD" -> {
-                // Moving off hold: developer can move to IN_DEVELOPMENT, manager can move to ASSIGNED
-                if ("IN_DEVELOPMENT".equals(newStatus)) {
-                    authorized = "DEVELOPER".equals(actor.getRole()) && isTaskDeveloper;
-                } else if ("ASSIGNED".equals(newStatus)) {
-                    authorized = "MANAGER".equals(actor.getRole()) && isTaskManager;
+                // Look up what status the patch was in before it went ON_HOLD
+                // so we can allow resuming to that exact status
+                String previousBeforeHold = statusHistoryRepository
+                        .findByTaskIdAndNewStatusOrderByCreatedAtDesc(task.getId(), "ON_HOLD")
+                        .stream().findFirst()
+                        .map(StatusHistory::getPreviousStatus)
+                        .orElse(null);
+
+                // Manager can resume to the status the patch was in before ON_HOLD,
+                // or to ASSIGNED/IN_DEVELOPMENT as fallback
+                if ("MANAGER".equals(actor.getRole()) && isTaskManager) {
+                    // Managers can move to any of the allowed ON_HOLD resumption statuses
+                    authorized = true;
+                } else if ("DEVELOPER".equals(actor.getRole()) && isTaskDeveloper) {
+                    authorized = "IN_DEVELOPMENT".equals(newStatus);
+                } else if ("TESTER".equals(actor.getRole()) && isTaskTester) {
+                    authorized = "TESTING".equals(newStatus) && "TESTING".equals(previousBeforeHold);
+                } else if ("DEPLOYER".equals(actor.getRole()) && (isTaskDeployer || actorId.equals(task.getDeployerId()))) {
+                    authorized = "DEPLOYMENT".equals(newStatus) && "DEPLOYMENT".equals(previousBeforeHold);
                 }
             }
         }

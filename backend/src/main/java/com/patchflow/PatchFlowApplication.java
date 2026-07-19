@@ -16,7 +16,7 @@ public class PatchFlowApplication extends SpringBootServletInitializer {
         return builder.sources(PatchFlowApplication.class);
     }
 
-    public static void main(String[] args) {
+    static {
         // Load .env file programmatically if it exists
         try {
             java.io.File envFile = new java.io.File(".env");
@@ -44,7 +44,9 @@ public class PatchFlowApplication extends SpringBootServletInitializer {
          } catch (Exception e) {
              System.err.println("Failed to load .env file: " + e.getMessage());
          }
- 
+    }
+
+    public static void main(String[] args) {
          SpringApplication.run(PatchFlowApplication.class, args);
      }
 

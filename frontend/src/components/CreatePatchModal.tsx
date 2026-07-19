@@ -244,14 +244,14 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
     return (
       <div className="space-y-2">
         <span className="block text-sm text-gray-400 font-medium">{label}</span>
-        <div className="max-h-36 overflow-y-auto rounded-2xl border border-gray-750 bg-gray-900 p-2.5 space-y-1.5 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
+        <div className="max-h-36 overflow-y-auto rounded-2xl border border-gray-750 bg-gray-850 p-2.5 space-y-1.5 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent">
           {allUsersOfRole.length === 0 && (
             <div className="text-xs text-gray-500 p-1">No users found.</div>
           )}
           {allUsersOfRole.map((user) => (
             <label
               key={user.id || user.userId}
-              className="flex items-center gap-2.5 text-sm text-white cursor-pointer hover:bg-gray-800/40 px-2 py-1 rounded-xl transition-colors"
+              className="flex items-center gap-2.5 text-sm text-white cursor-pointer hover:bg-gray-800/60 px-2 py-1 rounded-xl transition-colors"
             >
               <input
                 type="checkbox"
@@ -272,7 +272,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-[95vw] md:max-w-2xl lg:max-w-4xl rounded-3xl border border-gray-700 bg-gray-950/95 p-4 sm:p-6 shadow-2xl text-white max-h-[95vh] overflow-y-auto custom-scrollbar">
+      <div className="relative w-[95vw] md:max-w-2xl lg:max-w-4xl rounded-3xl border border-gray-700 bg-gray-900 p-4 sm:p-6 shadow-2xl text-white max-h-[95vh] overflow-y-auto custom-scrollbar">
         <div className="flex items-center justify-between gap-4 mb-6">
           <div>
             <div className="text-xs uppercase tracking-[0.24em] text-primary-400/80">Change Management</div>
@@ -299,7 +299,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                className="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500 placeholder-gray-500"
                 placeholder="Enter change title"
                 required
               />
@@ -311,7 +311,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                 value={moduleId}
                 onChange={(e) => setModuleId(e.target.value)}
                 required
-                className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                className="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500"
               >
                 <option value="">Select module</option>
                 {modules.map((mod) => (
@@ -323,7 +323,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
 
           {/* Internal Change Flag */}
           {!isClient && (
-            <div className="flex items-center gap-3 bg-gray-950/40 p-4 rounded-xl border border-gray-800">
+            <div className="flex items-center gap-3 bg-gray-850 p-4 rounded-xl border border-gray-700/60">
               <input
                 type="checkbox"
                 id="isInternal"
@@ -336,7 +336,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                     setClientPhone('');
                   }
                 }}
-                className="w-4 h-4 rounded border-gray-700 text-primary-600 bg-gray-900 focus:ring-primary-500"
+                className="w-4 h-4 rounded border-gray-700 text-primary-600 bg-gray-800 focus:ring-primary-500"
               />
               <label htmlFor="isInternal" className="text-sm font-medium text-gray-300 cursor-pointer selection:bg-transparent select-none">
                 Internal Change Request (Restricts access to assigned resources only)
@@ -359,7 +359,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                         setClientPhone('');
                       }
                     }}
-                    className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                    className="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500"
                   >
                     <option value="">No Client (Internal Request)</option>
                     {clientUsers.map((user) => (
@@ -372,7 +372,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
               ) : (
                 <div className="space-y-2 text-sm text-gray-400">
                   <span>Requesting Client</span>
-                  <div className="w-full rounded-2xl border border-gray-800 bg-gray-900/50 px-4 py-3 text-gray-300">
+                  <div className="w-full rounded-2xl border border-gray-700/60 bg-gray-850 px-4 py-3 text-gray-300">
                     {currentUser?.name || currentUser?.username}
                   </div>
                 </div>
@@ -388,7 +388,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                     if (val.length <= 10) setClientPhone(val);
                   }}
                   disabled={!isClient && !clientId}
-                  className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500 disabled:opacity-55 disabled:cursor-not-allowed"
+                  className="w-full rounded-2xl border border-gray-700 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500 disabled:opacity-55 disabled:cursor-not-allowed placeholder-gray-500"
                   placeholder={isClient || clientId ? "+91 XXXXX XXXXX" : "Select a client first"}
                 />
               </label>
@@ -396,7 +396,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
           )}
 
           {/* Resource Assignments */}
-          <div className="border-t border-gray-850 pt-4">
+          <div className="border-t border-gray-700/60 pt-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-primary-400 mb-3">Resource Assignments</h3>
             <div className={`grid gap-4 ${isClient ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-5'}`}>
               {renderUserSelector('Managers *', managerUsers, selectedManagerIds, setSelectedManagerIds)}
@@ -416,7 +416,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                 value={dateGiven}
                 onChange={(e) => setDateGiven(e.target.value)}
                 required
-                className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                className="w-full rounded-2xl border border-gray-700/60 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500"
               />
             </label>
             {isClient ? (
@@ -427,7 +427,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                   value={requestedDeadline}
                   onChange={(e) => setRequestedDeadline(e.target.value)}
                   required
-                  className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                  className="w-full rounded-2xl border border-gray-700/60 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500"
                 />
               </label>
             ) : (
@@ -438,7 +438,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                     type="date"
                     value={plannedStartDate}
                     onChange={(e) => setPlannedStartDate(e.target.value)}
-                    className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                    className="w-full rounded-2xl border border-gray-700/60 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500"
                   />
                 </label>
                 <label className="space-y-2 text-sm text-gray-400">
@@ -447,7 +447,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                     type="date"
                     value={plannedEndDate}
                     onChange={(e) => setPlannedEndDate(e.target.value)}
-                    className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                    className="w-full rounded-2xl border border-gray-700/60 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500"
                   />
                 </label>
               </>
@@ -455,7 +455,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
           </div>
 
           {/* 3-Part Description */}
-          <div className="border-t border-gray-850 pt-4 space-y-4">
+          <div className="border-t border-gray-700/60 pt-4 space-y-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-primary-400">Change Description</h3>
 
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
@@ -464,7 +464,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                 <input
                   value={descTitle}
                   onChange={(e) => setDescTitle(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                  className="w-full rounded-2xl border border-gray-700/60 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500 placeholder-gray-500"
                   placeholder="Short heading for this change..."
                   required
                 />
@@ -475,7 +475,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
                 <select
                   value={descType}
                   onChange={(e) => setDescType(e.target.value)}
-                  className="w-full rounded-2xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                  className="w-full rounded-2xl border border-gray-700/60 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500"
                 >
                   {CHANGE_TYPES.map((t) => (
                     <option key={t.value} value={t.value}>{t.label}</option>
@@ -489,7 +489,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
               <textarea
                 value={descComments}
                 onChange={(e) => setDescComments(e.target.value)}
-                className="min-h-[120px] w-full rounded-3xl border border-gray-700 bg-gray-900 px-4 py-3 text-white outline-none focus:border-primary-500"
+                className="min-h-[120px] w-full rounded-3xl border border-gray-700/60 bg-gray-800 px-4 py-3 text-white outline-none focus:border-primary-500 placeholder-gray-500"
                 placeholder="Describe the change requirements, scope, and any additional context..."
                 required
               />
@@ -497,7 +497,7 @@ export function CreatePatchModal({ open, onClose, onCreated }: CreatePatchModalP
 
             <div className="space-y-2">
               <span className="block text-sm text-gray-400 font-medium">Attach Document / File (Optional)</span>
-              <div className="flex items-center justify-between gap-3 bg-gray-900 border border-gray-700 rounded-2xl px-4 py-3">
+              <div className="flex items-center justify-between gap-3 bg-gray-850 border border-gray-700/60 rounded-2xl px-4 py-3">
                 <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-primary-400 hover:text-primary-300 transition-colors">
                   <Paperclip size={16} />
                   <span>Choose file...</span>

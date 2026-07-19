@@ -242,13 +242,14 @@ function Topbar({ theme, onThemeToggle, onOpenMobileSidebar }: TopbarProps) {
                     </span>
                   )}
                 </div>
-                {unreadNotifications > 0 && (
+                {notifications.length > 0 && (
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
                       try {
                         await api.delete("/notifications/clear");
-                        setNotifications([]);
+                        // Re-fetch from server to ensure badge is accurate
+                        api.get("/notifications").then(res => setNotifications(res.data)).catch(() => setNotifications([]));
                       } catch (err) {
                         console.error("Failed to clear notifications", err);
                       }

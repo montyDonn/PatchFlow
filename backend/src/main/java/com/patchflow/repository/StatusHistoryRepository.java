@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface StatusHistoryRepository extends JpaRepository<StatusHistory, String>, JpaSpecificationExecutor<StatusHistory> {
     List<StatusHistory> findByTaskIdOrderByCreatedAtAsc(String taskId);
+    List<StatusHistory> findByTaskIdOrderByCreatedAtDesc(String taskId);
+    List<StatusHistory> findByTaskIdAndNewStatusOrderByCreatedAtDesc(String taskId, String newStatus);
 }

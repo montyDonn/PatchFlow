@@ -75,7 +75,7 @@ const NEXT_STATUSES: Record<string, string[]> = {
   // Legacy statuses kept for backward compatibility
   RETURNED_TO_DEVELOPER: ['IN_DEVELOPMENT'],
   DELAYED: ['IN_DEVELOPMENT'],
-  ON_HOLD: ['IN_DEVELOPMENT', 'ASSIGNED'],
+  ON_HOLD: ['IN_DEVELOPMENT', 'ASSIGNED', 'TESTING', 'MANAGER_REVIEW', 'DEPLOYMENT'],
   COMPLETED: [],
   REJECTED: [],
   CANCELLED: [],
@@ -173,7 +173,7 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
     nextStatuses = isTaskManager ? nextStatuses.filter(status =>
       (task.status === 'PENDING_APPROVAL' && ['ASSIGNED', 'REJECTED'].includes(status)) ||
       (task.status === 'MANAGER_REVIEW' && ['DEPLOYMENT', 'IN_DEVELOPMENT', 'REJECTED', 'ON_HOLD'].includes(status)) ||
-      (task.status === 'ON_HOLD' && status === 'ASSIGNED')
+      (task.status === 'ON_HOLD' && ['IN_DEVELOPMENT', 'ASSIGNED', 'TESTING', 'MANAGER_REVIEW', 'DEPLOYMENT'].includes(status))
     ) : [];
   } else if (currentUser?.role === 'DEVELOPER') {
     nextStatuses = isTaskDeveloper ? nextStatuses.filter(status =>
@@ -1218,6 +1218,14 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     setSelectedTesterIds
                   )}
 
+                  {/* Deployers */}
+                  {renderUserSelector(
+                    'Deployers',
+                    usersList.filter((u) => u.role === 'DEPLOYER'),
+                    selectedDeployerIds,
+                    setSelectedDeployerIds
+                  )}
+
                   {/* Verifiers */}
                   {renderUserSelector(
                     'Verifiers',
@@ -1349,27 +1357,6 @@ export function PatchDetailsModal({ task, onClose, onStatusChange, onCommentAdde
                     usersList.filter(u => u.role === 'DEPLOYER'),
                     selectedDeployerIds,
                     setSelectedDeployerIds
-                  )}
-
-                  {canAssignResources && (
-                    <div className="space-y-2">
-                      <span className="text-xs font-medium text-gray-400">Deployer</span>
-                      <select
-                        value={editDeployerId}
-                        onChange={(e) => setEditDeployerId(e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-primary-500 transition-colors"
-                      >
-                        <option value="">Select Deployer</option>
-                        {usersList.filter(u => u.role === 'DEPLOYER').map((u) => {
-                          const id = u.id || u.userId || '';
-                          return (
-                            <option key={id} value={id}>
-                              {getUserDisplayName(u)}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
                   )}
 
                   <div className="space-y-2">
