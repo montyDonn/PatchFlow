@@ -19,6 +19,7 @@ export default defineConfig(({ mode, command }) => {
   }
 
   return {
+    base: '/patchflowui/',
     plugins: [
       react(),
       tailwindcss(),

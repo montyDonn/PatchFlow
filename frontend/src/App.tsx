@@ -32,7 +32,7 @@ const AdminRoute = ({ children }: { children: any }) => {
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/patchflowui">
       <Routes>
         <Route path="/login" element={<Login />} />
         
